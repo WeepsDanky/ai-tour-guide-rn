@@ -8,11 +8,6 @@ import { useCreateTour } from '../../src/context/CreateTourContext';
 import { LocationPill } from '../../src/ui/molecules/LocationPill';
 import { TextArea } from '../../src/ui/atoms/TextArea';
 import { Button } from '../../src/ui/atoms/Button';
-import { Modal, ModalContent, ModalFooter } from '../../src/ui/molecules/Modal';
-import { ProgressIndicator } from '../../src/ui/atoms/ProgressIndicator';
-import { LoadingIndicator } from '../../src/ui/atoms/LoadingIndicator';
-import { mockTourGeneration, mockProgressCheck, TourGenerationTask } from '../../src/lib/mock-data';
-import { TourRequest } from '~/types';
 
 export default function ConfirmPhotoScreen() {
   const router = useRouter();
@@ -29,11 +24,7 @@ export default function ConfirmPhotoScreen() {
   const [localPreferences, setLocalPreferences] = useState(preferencesText);
   const [isLocationEditable, setIsLocationEditable] = useState(false);
   const [editedLocation, setEditedLocation] = useState(locationLabel);
-  
-  // Tour generation state
   const [loading, setLoading] = useState(false);
-  const [showProgressModal, setShowProgressModal] = useState(false);
-  const [generationTask, setGenerationTask] = useState<TourGenerationTask | null>(null);
 
   // Redirect if no photo
   React.useEffect(() => {
@@ -74,92 +65,13 @@ export default function ConfirmPhotoScreen() {
       // Save preferences to context
       setPreferencesText(localPreferences);
       
-      const request: TourRequest = {
-        location: locationLabel.trim(),
-        photos: photoUri ? [photoUri] : [],
-        preferences: localPreferences.trim() || undefined,
-      };
-
-      // Start tour generation
-      const { taskId } = await mockTourGeneration(request);
-      
-      // Show progress modal and start polling
-      setShowProgressModal(true);
-      setLoading(false);
-      
-      pollGenerationProgress(taskId);
-      
+      // Navigate to progress screen
+      router.push('/create-photo/progress');
     } catch (error) {
       setLoading(false);
-      console.error('Failed to generate tour:', error);
+      console.error('Failed to start tour generation:', error);
       Alert.alert('Error', 'Failed to start tour generation. Please try again.');
     }
-  };
-
-  const pollGenerationProgress = async (taskId: string) => {
-    let attempts = 0;
-    const maxAttempts = 30; // 1 minute with 2-second intervals
-    
-    const poll = async () => {
-      try {
-        const task = await mockProgressCheck(taskId);
-        setGenerationTask(task);
-        
-        if (task.phase === 'audio_ready' && task.payload) {
-          // Tour generation complete
-          setShowProgressModal(false);
-          Alert.alert(
-            'Tour Ready!',
-            'Your personalized tour has been generated successfully.',
-            [
-              { text: 'View Tour', onPress: () => handleTourComplete(task.payload!) },
-              { text: 'Later', style: 'cancel', onPress: () => router.dismiss(2) }
-            ]
-          );
-          return;
-        }
-        
-        if (task.phase === 'error') {
-          setShowProgressModal(false);
-          Alert.alert('Generation Failed', task.error || 'An error occurred during tour generation.');
-          return;
-        }
-        
-        // Continue polling
-        attempts++;
-        if (attempts < maxAttempts) {
-          setTimeout(poll, 2000);
-        } else {
-          setShowProgressModal(false);
-          Alert.alert('Timeout', 'Tour generation is taking longer than expected. Please try again.');
-        }
-      } catch (error) {
-        console.error('Polling error:', error);
-        setShowProgressModal(false);
-        Alert.alert('Error', 'Failed to check generation progress.');
-      }
-    };
-    
-    poll();
-  };
-
-  const handleTourComplete = (tour: any) => {
-    // Clear context data after successful generation
-    clearPhotoData();
-    
-    // Navigate to map screen with the generated tour
-    router.dismiss();
-    setTimeout(() => {
-      router.push({
-        pathname: '/map',
-        params: { tourData: JSON.stringify(tour) }
-      });
-    }, 100);
-  };
-
-  const closeProgressModal = () => {
-    setShowProgressModal(false);
-    setGenerationTask(null);
   };
 
   if (!photoUri) {
@@ -198,30 +110,18 @@ export default function ConfirmPhotoScreen() {
 
         {/* Location Pill */}
         <View 
-          className="absolute top-0 left-0 right-0 items-center z-10"
-          style={{ paddingTop: insets.top + 60 }}
+          className="absolute top-1/4 left-0 right-0 px-4 z-10"
         >
-          {isLocationEditable ? (
-            <View className="bg-white/90 backdrop-blur-sm rounded-full px-4 py-2 flex-row items-center shadow-md border border-white/20">
-              <FontAwesome name="map-marker" size={14} color="#374151" style={{ marginRight: 6 }} />
-              <TextArea
-                value={editedLocation}
-                onChangeText={setEditedLocation}
-                className="text-gray-700 text-sm font-medium max-w-[200px] border-0 p-0"
-                rows={1}
-                onBlur={handleLocationEdit}
-                autoFocus
-              />
-            </View>
-          ) : (
-            <LocationPill 
-              location={locationLabel}
-              onPress={handleLocationEdit}
-            />
-          )}
+          <LocationPill
+            location={editedLocation}
+            editable={isLocationEditable}
+            onEdit={handleLocationEdit}
+            onChangeText={setEditedLocation}
+            onPress={handleLocationEdit}
+          />
         </View>
 
-        {/* Preferences Input (bottom overlay) */}
+        {/* Bottom Section */}
         <View 
           className="absolute bottom-20 left-0 right-0 px-4 z-10"
           style={{ paddingBottom: insets.bottom }}
@@ -260,43 +160,6 @@ export default function ConfirmPhotoScreen() {
           </View>
         </View>
       </ImageBackground>
-
-      {/* Progress Modal */}
-      <Modal
-        isVisible={showProgressModal}
-        onClose={closeProgressModal}
-        title="Generating Your Tour"
-        size="medium"
-        showCloseButton={false}
-      >
-        <ModalContent>
-          {generationTask ? (
-            <View className="space-y-4">
-              <ProgressIndicator
-                progress={generationTask.progress}
-                text={generationTask.message}
-                size="large"
-              />
-              
-              <View className="bg-gray-50 rounded-lg p-4">
-                <Text className="text-sm text-gray-600 text-center">
-                  This may take a few moments while we create your personalized tour...
-                </Text>
-              </View>
-            </View>
-          ) : (
-            <LoadingIndicator text="Initializing..." />
-          )}
-        </ModalContent>
-        
-        <ModalFooter>
-          <Button
-            title="Cancel"
-            onPress={closeProgressModal}
-            className="bg-gray-200 text-gray-700"
-          />
-        </ModalFooter>
-      </Modal>
     </View>
   );
 } 

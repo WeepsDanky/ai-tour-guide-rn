@@ -24,6 +24,12 @@ export default function RootLayout() {
             presentation: 'modal',
             headerShown: false 
           }} />
+          <Stack.Screen name="create-photo/progress" options={{ 
+            title: 'Generating Tour',
+            presentation: 'fullScreenModal',
+            headerShown: false,
+            gestureEnabled: false
+          }} />
           <Stack.Screen name="map" options={{ title: 'Tour Map', presentation: 'fullScreenModal' }} />
           <Stack.Screen name="tour" options={{ title: 'Tour Details' }} />
           <Stack.Screen name="settings" options={{ title: 'Settings' }} />

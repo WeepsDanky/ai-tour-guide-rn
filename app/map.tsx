@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
-import { View, Alert } from 'react-native';
+import React from 'react';
+import { View, Pressable } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { FontAwesome } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Container } from '../src/ui/atoms/Container';
-import { TourPlayer } from '../src/features/tour-player/components/TourPlayer';
-import { LoadingIndicator } from '../src/ui/atoms/LoadingIndicator';
+import { TourMap } from '../src/features/tour-player/components/TourMap';
+import { TourInfoDropdown } from '../src/features/tour-player/components/TourInfoDropdown';
 import { EmptyState } from '../src/ui/molecules/EmptyState';
-import { Tour } from '~/types';
+import { Tour, POI } from '~/types';
 import { getMockTours } from '../src/lib/mock-data';
 
 export default function MapScreen() {
@@ -14,6 +16,8 @@ export default function MapScreen() {
     tourData?: string;
   }>();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const [currentPOI, setCurrentPOI] = React.useState<POI | null>(null);
 
   let tour: Tour | null = null;
   let error: string | null = null;
@@ -41,39 +45,12 @@ export default function MapScreen() {
     error = e instanceof Error ? e.message : 'Failed to load tour data';
   }
 
-  const handleTourComplete = () => {
-    Alert.alert(
-      'Tour Completed!',
-      'Congratulations on completing your tour! How was your experience?',
-      [
-        {
-          text: 'Rate Tour',
-          onPress: () => {
-            router.back();
-          },
-        },
-        {
-          text: 'Finish',
-          onPress: () => router.back(),
-          style: 'default',
-        },
-      ]
-    );
+  const handleTourExit = () => {
+    router.back();
   };
 
-  const handleTourExit = () => {
-    Alert.alert(
-      'Exit Tour?',
-      'Are you sure you want to exit the current tour? Your progress will be saved.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Exit',
-          style: 'destructive',
-          onPress: () => router.back(),
-        },
-      ]
-    );
+  const handlePOISelect = (poi: POI) => {
+    setCurrentPOI(poi);
   };
 
   // Conditionally select the content to render
@@ -92,13 +69,40 @@ export default function MapScreen() {
     );
   } else {
     content = (
-      <TourPlayer tour={tour} onComplete={handleTourComplete} onExit={handleTourExit} />
+      <View className="flex-1">
+        {/* Full screen map with dropdown */}
+        <View className="flex-1 relative">
+          <View className="absolute inset-0">
+            <View className="flex-1">
+              {/* Tour Info Dropdown */}
+              <TourInfoDropdown tour={tour} />
+              
+              {/* Map */}
+              <View className="flex-1">
+                <TourMap 
+                  tour={tour} 
+                  currentPOI={currentPOI}
+                  onPOISelect={handlePOISelect}
+                />
+              </View>
+            </View>
+          </View>
+          
+          {/* Exit button */}
+          <Pressable
+            onPress={handleTourExit}
+            className="absolute left-4 w-10 h-10 items-center justify-center rounded-full bg-white shadow-lg z-10"
+            style={{ top: 50 }}
+          >
+            <FontAwesome name="arrow-left" size={20} color="#374151" />
+          </Pressable>
+        </View>
+      </View>
     );
   }
 
-  // Always return the same JSX structure
   return (
-    <View className="flex-1">
+    <View className="flex-1 bg-white">
       <Stack.Screen
         options={{
           headerShown: false,
