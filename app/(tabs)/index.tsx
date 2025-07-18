@@ -6,7 +6,7 @@ import { NearbyToursSection } from '../../src/features/home/components/NearbyTou
 import { RecommendedToursSection } from '../../src/features/home/components/RecommendedToursSection';
 import { EmptyState } from '../../src/ui/molecules/EmptyState';
 import { Tour } from '~/types';
-import { getMockTours } from '../../src/lib/mock-data';
+import { getAllTours } from '@/services/tour.service';
 
 export default function DiscoverScreen() {
   // State Management
@@ -24,11 +24,9 @@ export default function DiscoverScreen() {
     try {
       setLoading(true);
       
-      // Simulate API calls - replace with actual endpoints
-      await new Promise(resolve => setTimeout(resolve, 800)); // Simulate network delay
-      
-      const mockTours = getMockTours();
-      setTours(mockTours);
+      // THIS IS NOW AN ASYNC CALL TO THE BACKEND
+      const fetchedTours = await getAllTours();
+      setTours(fetchedTours);
       
       // Simulate getting user location - replace with actual location service
       setUserLocation('New York, NY');

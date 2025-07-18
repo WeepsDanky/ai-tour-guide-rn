@@ -7,7 +7,8 @@ import { useCreateTour } from '../../src/context/CreateTourContext';
 import { Button } from '../../src/ui/atoms/Button';
 import { ProgressIndicator } from '../../src/ui/atoms/ProgressIndicator';
 import { LoadingIndicator } from '../../src/ui/atoms/LoadingIndicator';
-import { mockTourGeneration, mockProgressCheck, TourGenerationTask } from '../../src/lib/mock-data';
+import { createTour, checkTourCreationProgress } from '@/services/tour.service';
+import type { TourGenerationTask } from '~/types';
 import { TourRequest } from '~/types';
 
 export default function TourProgressScreen() {
@@ -39,9 +40,8 @@ export default function TourProgressScreen() {
         photos: photoUri ? [photoUri] : [],
         preferences: preferencesText?.trim() || undefined,
       };
-
       // Start tour generation
-      const { taskId } = await mockTourGeneration(request);
+      const { taskId } = await createTour(request);
       pollGenerationProgress(taskId);
     } catch (error) {
       console.error('Failed to generate tour:', error);
@@ -50,39 +50,28 @@ export default function TourProgressScreen() {
   };
 
   const pollGenerationProgress = async (taskId: string) => {
-    let attempts = 0;
-    const maxAttempts = 30; // 1 minute with 2-second intervals
-    
-    const poll = async () => {
-      try {
-        const task = await mockProgressCheck(taskId);
-        setGenerationTask(task);
-        
-        if (task.phase === 'audio_ready' && task.payload) {
-          // Tour generation complete
-          handleTourComplete(task.payload);
-          return;
+    try {
+      const poll = async () => {
+        try {
+          const task: TourGenerationTask = await checkTourCreationProgress(taskId);
+          setGenerationTask(task);
+          if (task.phase === 'audio_ready' && task.payload) {
+            handleTourComplete(task.payload);
+          } else if (task.phase === 'error') {
+            handleError(task.error || 'Tour generation failed');
+          } else {
+            setTimeout(poll, 1500);
+          }
+        } catch (error) {
+          console.error('Polling error:', error);
+          handleError('Failed to poll tour generation progress');
         }
-        
-        if (task.phase === 'error') {
-          handleError(task.error || 'An error occurred during tour generation');
-          return;
-        }
-        
-        // Continue polling
-        attempts++;
-        if (attempts < maxAttempts) {
-          setTimeout(poll, 2000);
-        } else {
-          handleError('Tour generation is taking longer than expected');
-        }
-      } catch (error) {
-        console.error('Polling error:', error);
-        handleError('Failed to check generation progress');
-      }
-    };
-    
-    poll();
+      };
+      poll();
+    } catch (error) {
+      console.error('Failed to start polling:', error);
+      handleError('Failed to start polling tour generation progress');
+    }
   };
 
   const handleError = (message: string) => {

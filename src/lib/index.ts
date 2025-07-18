@@ -8,5 +8,4 @@
 export * from './map';
 export * from './geofencer';
 export * from './fetcher';
-export * from './env';
-export * from './mock-data'; 
+export * from './env'; 

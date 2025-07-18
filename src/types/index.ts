@@ -60,6 +60,18 @@ export interface TourRequest {
   preferences?: string; // Additional user preferences for tour generation
 }
 
+/**
+ * Tour generation task status
+ */
+export interface TourGenerationTask {
+  taskId: string;
+  phase: 'initializing' | 'research' | 'planning' | 'generating' | 'audio_generation' | 'audio_ready' | 'error';
+  progress: number;
+  message: string;
+  payload?: Tour;
+  error?: string;
+}
+
 // =============================================================================
 // USER & JOURNEY TYPES
 // =============================================================================

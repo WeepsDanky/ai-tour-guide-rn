@@ -8,7 +8,7 @@ import { TourMap } from '../src/features/tour-player/components/TourMap';
 import { TourInfoDropdown } from '../src/features/tour-player/components/TourInfoDropdown';
 import { EmptyState } from '../src/ui/molecules/EmptyState';
 import { Tour, POI } from '~/types';
-import { getMockTours } from '../src/lib/mock-data';
+import { getAllTours, getTourById } from '@/services/tour.service';
 
 export default function MapScreen() {
   const { tourId, tourData } = useLocalSearchParams<{
@@ -18,32 +18,49 @@ export default function MapScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [currentPOI, setCurrentPOI] = React.useState<POI | null>(null);
+  const [tour, setTour] = React.useState<Tour | null>(null);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
 
-  let tour: Tour | null = null;
-  let error: string | null = null;
+  // Load tour data on mount
+  React.useEffect(() => {
+    const loadTour = async () => {
+      try {
+        setLoading(true);
+        setError(null);
 
-  try {
-    if (tourData) {
-      tour = JSON.parse(tourData);
-    } else if (tourId) {
-      const mockTours = getMockTours();
-      const foundTour = mockTours.find((t) => t.id === tourId);
-      if (!foundTour) {
-        error = 'Tour not found';
-      } else {
-        tour = foundTour;
+        if (tourData) {
+          // Tour data passed directly
+          const parsedTour = JSON.parse(tourData);
+          setTour(parsedTour);
+        } else if (tourId) {
+          // Load specific tour by ID
+          const foundTour = await getTourById(tourId);
+          if (!foundTour) {
+            setError('Tour not found');
+          } else {
+            setTour(foundTour);
+          }
+        } else {
+          // Load first available tour
+          const tours = await getAllTours();
+          const defaultTour = tours.length > 0 ? tours[0] : null;
+          if (!defaultTour) {
+            setError('No tours available');
+          } else {
+            setTour(defaultTour);
+          }
+        }
+      } catch (e) {
+        console.error('Failed to load tour:', e);
+        setError(e instanceof Error ? e.message : 'Failed to load tour data');
+      } finally {
+        setLoading(false);
       }
-    } else {
-      const mockTours = getMockTours();
-      tour = mockTours.length > 0 ? mockTours[0] : null;
-      if (!tour) {
-        error = 'No tours available';
-      }
-    }
-  } catch (e) {
-    console.error('Failed to load tour:', e);
-    error = e instanceof Error ? e.message : 'Failed to load tour data';
-  }
+    };
+
+    loadTour();
+  }, [tourId, tourData]);
 
   const handleTourExit = () => {
     router.back();
@@ -55,7 +72,17 @@ export default function MapScreen() {
 
   // Conditionally select the content to render
   let content;
-  if (error || !tour) {
+  if (loading) {
+    content = (
+      <Container>
+        <EmptyState
+          icon="clock-o"
+          title="Loading Tour"
+          description="Please wait while we load your tour..."
+        />
+      </Container>
+    );
+  } else if (error || !tour) {
     content = (
       <Container>
         <EmptyState

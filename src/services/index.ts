@@ -15,3 +15,5 @@ export * from './mock-data';
 
 // Audio services
 export * from './audio-player'; 
+
+export * as TourService from './tour.service'; 
