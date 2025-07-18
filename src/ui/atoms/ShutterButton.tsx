@@ -17,7 +17,7 @@ export function ShutterButton({ onPress, disabled = false, loading = false }: Sh
     <Pressable
       onPress={onPress}
       disabled={disabled || loading}
-      className="items-center justify-center active:scale-95"
+      className="items-center justify-center"
     >
       <View 
         className="w-18 h-18 bg-gray-800 rounded-full items-center justify-center border-4 border-white"
@@ -31,7 +31,7 @@ export function ShutterButton({ onPress, disabled = false, loading = false }: Sh
       >
         <View className="w-14 h-14 bg-white rounded-full items-center justify-center">
           {loading ? (
-            <View className="w-6 h-6 bg-gray-400 rounded-full animate-pulse" />
+            <View className="w-6 h-6 bg-gray-400 rounded-full" />
           ) : (
             <FontAwesome name="camera" size={24} color="#374151" />
           )}

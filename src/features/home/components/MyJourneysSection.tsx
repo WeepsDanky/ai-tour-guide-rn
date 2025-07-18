@@ -89,7 +89,7 @@ export function MyJourneysSection({
           {[1, 2, 3].map((index) => (
             <View 
               key={index}
-              className="w-40 h-32 bg-gray-200 rounded-xl mr-3 animate-pulse"
+              className="w-40 h-32 bg-gray-200 rounded-xl mr-3"
             />
           ))}
         </ScrollView>

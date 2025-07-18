@@ -42,7 +42,7 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
       >
         <Pressable
           onPress={() => navigation.navigate('create')}
-          className="w-14 h-14 bg-blue-500 rounded-full items-center justify-center shadow-lg border-4 border-white active:scale-95"
+          className="w-14 h-14 bg-blue-500 rounded-full items-center justify-center shadow-lg border-4 border-white"
           style={{
             elevation: 8, // Android shadow
             shadowColor: '#000', // iOS shadow

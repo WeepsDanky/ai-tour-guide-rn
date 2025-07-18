@@ -30,17 +30,17 @@ export function RecommendedToursSection({
         <View className="px-4">
           <View className="gap-3">
             {/* Featured placeholder */}
-            <View className="w-full h-32 bg-gray-200 rounded-xl animate-pulse" />
+            <View className="w-full h-32 bg-gray-200 rounded-xl" />
             
             {/* Grid placeholders */}
             <View className="flex-row gap-3">
               <View className="flex-1 gap-3">
-                <View className="w-full h-32 bg-gray-200 rounded-xl animate-pulse" />
-                <View className="w-full h-20 bg-gray-200 rounded-xl animate-pulse" />
+                <View className="w-full h-32 bg-gray-200 rounded-xl" />
+                <View className="w-full h-20 bg-gray-200 rounded-xl" />
               </View>
               <View className="flex-1 gap-3">
-                <View className="w-full h-20 bg-gray-200 rounded-xl animate-pulse" />
-                <View className="w-full h-32 bg-gray-200 rounded-xl animate-pulse" />
+                <View className="w-full h-20 bg-gray-200 rounded-xl" />
+                <View className="w-full h-32 bg-gray-200 rounded-xl" />
               </View>
             </View>
           </View>

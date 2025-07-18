@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, ScrollView, RefreshControl, Alert, Text } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { SearchBar } from '../../src/features/tour-player/components/SearchBar';
@@ -125,8 +125,8 @@ export default function DiscoverScreen() {
   }, []);
 
   // Data Processing
-  const nearbyTours = tours.slice(0, 5); // Mock nearby tours
-  const recommendedTours = tours.slice(2, 8); // Mock recommended tours
+  const nearbyTours = useMemo(() => tours.slice(0, 5), [tours]);
+  const recommendedTours = useMemo(() => tours.slice(2, 8), [tours]);
 
   const isSearching = searchQuery.trim().length > 0;
 

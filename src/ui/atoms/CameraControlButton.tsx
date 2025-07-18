@@ -23,7 +23,7 @@ export function CameraControlButton({
     <Pressable
       onPress={onPress}
       disabled={disabled}
-      className="items-center justify-center p-2 active:scale-95"
+      className="items-center justify-center p-2"
       style={{ opacity: disabled ? 0.5 : 1 }}
     >
       <View 

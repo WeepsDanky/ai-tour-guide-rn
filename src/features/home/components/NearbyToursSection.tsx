@@ -37,7 +37,7 @@ export function NearbyToursSection({
           {[1, 2, 3, 4].map((index) => (
             <View 
               key={index}
-              className="bg-gray-200 rounded-xl mr-4 animate-pulse"
+              className="bg-gray-200 rounded-xl mr-4"
               style={{ width: 200, height: 200 }}
             />
           ))}
@@ -102,7 +102,7 @@ export function NearbyToursSection({
         renderItem={({ item }) => (
           <SquareTourCard
             tour={item}
-            onPress={() => onTourPress(item)}
+            onPress={onTourPress}
           />
         )}
         keyExtractor={(item) => item.id}

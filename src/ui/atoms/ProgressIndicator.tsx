@@ -98,7 +98,7 @@ export function ProgressIndicator({
       
       <View className={cn('bg-gray-200 rounded-full overflow-hidden', getSizeStyles())}>
         <View 
-          className="bg-blue-500 rounded-full transition-all duration-300 ease-out h-full"
+          className="bg-blue-500 rounded-full h-full"
           style={{ width: `${clampedProgress}%` }}
         />
       </View>
