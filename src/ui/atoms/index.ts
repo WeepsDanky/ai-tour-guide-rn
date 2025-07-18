@@ -17,4 +17,13 @@ export { LoadingIndicator } from './LoadingIndicator';
 export type { LoadingIndicatorProps, LoadingVariant, LoadingSize } from './LoadingIndicator';
 
 export { ProgressIndicator } from './ProgressIndicator';
-export type { ProgressIndicatorProps, ProgressVariant, ProgressSize } from './ProgressIndicator'; 
+export type { ProgressIndicatorProps, ProgressVariant, ProgressSize } from './ProgressIndicator';
+
+export { ShutterButton } from './ShutterButton';
+export type { ShutterButtonProps } from './ShutterButton';
+
+export { CameraControlButton, FlipButton, ChooseFromLibraryButton } from './CameraControlButton';
+export type { CameraControlButtonProps, FlipButtonProps, ChooseFromLibraryButtonProps } from './CameraControlButton';
+
+export { TextArea } from './TextArea';
+export type { TextAreaProps } from './TextArea'; 

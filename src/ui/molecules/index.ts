@@ -17,4 +17,7 @@ export type { ModalProps, ModalSize, ModalSectionProps } from './Modal';
 export { TourCard } from './TourCard';
 export type { TourCardProps } from './TourCard';
 
-export { SquareTourCard } from './SquareTourCard'; 
+export { SquareTourCard } from './SquareTourCard';
+
+export { LocationPill } from './LocationPill';
+export type { LocationPillProps } from './LocationPill'; 

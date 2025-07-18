@@ -57,6 +57,7 @@ export interface Tour {
 export interface TourRequest {
   location: string;
   photos?: string[]; // URIs to selected photos
+  preferences?: string; // Additional user preferences for tour generation
 }
 
 // =============================================================================
