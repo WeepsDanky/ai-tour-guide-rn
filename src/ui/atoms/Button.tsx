@@ -9,7 +9,7 @@ const cn = (...classes: (string | undefined | false)[]): string => {
 /**
  * Button variants for different visual styles
  */
-export type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost';
+export type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
 
 /**
  * Button sizes for consistent spacing
@@ -57,6 +57,8 @@ export const Button = forwardRef<View, ButtonProps>(({
         return 'bg-transparent border border-blue-500';
       case 'ghost':
         return 'bg-transparent';
+      case 'danger':
+        return 'bg-red-600 border-red-600';
       default:
         return 'bg-blue-500 shadow-md';
     }
@@ -81,6 +83,8 @@ export const Button = forwardRef<View, ButtonProps>(({
         return 'text-blue-500';
       case 'ghost':
         return 'text-blue-500';
+      case 'danger':
+        return 'text-white';
       default:
         return 'text-white';
     }

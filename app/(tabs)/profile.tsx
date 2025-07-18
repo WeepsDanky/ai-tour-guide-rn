@@ -99,8 +99,8 @@ export default function ProfileScreen() {
           <View className="m-4">
             <Button
               title="Sign Out"
+              variant="danger"
               onPress={() => Alert.alert('Sign Out', 'Sign out functionality will be available soon!')}
-              className="border-red-300 bg-red-50"
             />
           </View>
         </ScrollView>
