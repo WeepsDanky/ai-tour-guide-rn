@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { View, TextInput, Pressable, TextInputProps } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
 
-interface SearchBarProps extends Omit<TextInputProps, 'onChangeText'> {
+interface SearchBarProps extends Omit<TextInputProps, 'onChangeText' | 'value'> {
+  value: string; // The value is now mandatory
   onSearch: (query: string) => void;
   onClear?: () => void;
   placeholder?: string;
@@ -11,23 +12,21 @@ interface SearchBarProps extends Omit<TextInputProps, 'onChangeText'> {
 }
 
 export function SearchBar({
+  value,
   onSearch,
   onClear,
   placeholder = 'Search tours...',
   showFilter = false,
   onFilterPress,
-  value,
   ...textInputProps
 }: SearchBarProps) {
-  const [query, setQuery] = useState(value || '');
-
   const handleChangeText = (text: string) => {
-    setQuery(text);
+    // Directly call the parent's handler. The parent is responsible for state.
     onSearch(text);
   };
 
   const handleClear = () => {
-    setQuery('');
+    // Clear the parent's state.
     onSearch('');
     onClear?.();
   };
@@ -37,17 +36,17 @@ export function SearchBar({
       <FontAwesome name="search" size={16} color="#9CA3AF" className="mr-3" />
       
       <TextInput
-        value={query}
+        value={value}
         onChangeText={handleChangeText}
         placeholder={placeholder}
         placeholderTextColor="#9CA3AF"
         className="flex-1 text-gray-900 text-base"
         returnKeyType="search"
-        onSubmitEditing={() => onSearch(query)}
+        onSubmitEditing={() => onSearch(value)}
         {...textInputProps}
       />
       
-      {query.length > 0 && (
+      {value.length > 0 && (
         <Pressable onPress={handleClear} className="ml-2">
           <FontAwesome name="times-circle" size={16} color="#9CA3AF" />
         </Pressable>

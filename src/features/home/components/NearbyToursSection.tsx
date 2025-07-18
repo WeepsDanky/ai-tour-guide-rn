@@ -102,7 +102,7 @@ export function NearbyToursSection({
         renderItem={({ item }) => (
           <SquareTourCard
             tour={item}
-            onPress={onTourPress}
+            onPress={() => onTourPress(item)}
           />
         )}
         keyExtractor={(item) => item.id}

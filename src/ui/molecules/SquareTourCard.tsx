@@ -5,7 +5,7 @@ import { Tour } from '~/types';
 
 interface SquareTourCardProps {
   tour: Tour;
-  onPress: (tour: Tour) => void;
+  onPress: () => void;
 }
 
 export function SquareTourCard({ tour, onPress }: SquareTourCardProps) {
@@ -17,7 +17,7 @@ export function SquareTourCard({ tour, onPress }: SquareTourCardProps) {
 
   return (
     <Pressable 
-      onPress={() => onPress(tour)}
+      onPress={onPress}
       className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100 mr-4"
       style={{ width: 200 }} // Fixed width for horizontal scrolling
     >

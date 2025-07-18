@@ -59,24 +59,9 @@ export function TourPlayer({ tour, onComplete, onExit }: TourPlayerProps) {
     // Cleanup logic will be implemented when audio/geo services are fixed
   }, []);
 
-  const initializeTour = useCallback(async () => {
-    try {
-      // Show welcome message
-      Alert.alert(
-        'Tour Started',
-        `Welcome to "${tour.title}"! Explore the highlighted points of interest.`,
-        [{ text: 'Let\'s Go!', style: 'default' }]
-      );
-    } catch (error) {
-      console.error('Failed to initialize tour:', error);
-      Alert.alert('Error', 'Failed to initialize tour. Please try again.');
-    }
-  }, [tour.title]);
-
   useEffect(() => {
-    initializeTour();
     return cleanup;
-  }, [tourId, initializeTour, cleanup]);
+  }, [tourId, cleanup]);
 
   const handlePOISelect = useCallback(async (poi: POI) => {
     setCurrentPOI(poi);
