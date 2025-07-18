@@ -43,7 +43,6 @@ export default function DiscoverScreen() {
 
   // Initialize data on mount
   useEffect(() => {
-    console.log('useEffect triggered', isInitialized);
     if (!isInitialized) {
       loadInitialData();
       setIsInitialized(true);
