@@ -2,7 +2,7 @@ import { Link, Stack } from 'expo-router';
 
 import { Text } from 'react-native';
 
-import { Container } from '~/components/Container';
+import { Container } from '../src/ui/atoms/Container';
 
 export default function NotFoundScreen() {
   return (

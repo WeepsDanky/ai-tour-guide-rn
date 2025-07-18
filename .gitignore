@@ -1,3 +1,7 @@
+# gitingest files 
+digest.txt
+
+# node modules
 node_modules/
 .expo/
 dist/
