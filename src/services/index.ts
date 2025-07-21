@@ -7,11 +7,7 @@
 // API and data services
 export * from './api';
 
-// Configuration services
-export * from './config';
 
-// Mock data for development
-export * from './mock-data';
 
 // Audio services
 export * from './audio-player'; 

@@ -4,7 +4,7 @@ import { FontAwesome } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAudioPlayer } from './useAudioPlayer';
 import { AudioPlayerSlider } from './AudioPlayer.Slider';
-import { POI } from '~/types';
+import { POI } from '@/types';
 
 // Helper to format time from milliseconds to MM:SS
 const formatTime = (millis: number) => {

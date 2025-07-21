@@ -1,4 +1,4 @@
-export { CreateTourProvider, useCreateTour } from './CreateTourContext';
-export type { CreateTourContextData, CreateTourProviderProps } from './CreateTourContext';
+export { CreateTourProvider, useCreateTour } from '@/features/create-tour/context/CreateTourContext';
+export type { CreateTourContextData, CreateTourProviderProps } from '@/features/create-tour/context/CreateTourContext';
 
 export { AuthProvider, useAuth } from './AuthContext'; 

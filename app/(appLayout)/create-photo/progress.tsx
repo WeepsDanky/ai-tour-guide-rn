@@ -3,10 +3,10 @@ import { View, Text } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { useCreateTour } from '../../../src/context/CreateTourContext';
-import { Button } from '../../../src/ui/atoms/Button';
-import { ProgressIndicator } from '../../../src/ui/atoms/ProgressIndicator';
-import { LoadingIndicator } from '../../../src/ui/atoms/LoadingIndicator';
+import { useCreateTour } from '@/features/create-tour/context/CreateTourContext';
+import { Button } from '@/ui/atoms/Button';
+import { ProgressIndicator } from '@/ui/atoms/ProgressIndicator';
+import { LoadingIndicator } from '@/ui/atoms/LoadingIndicator';
 import { createTour, checkTourCreationProgress } from '@/services/tour.service';
 import type { TourGenerationTask, TourRequest } from '@/types';
 

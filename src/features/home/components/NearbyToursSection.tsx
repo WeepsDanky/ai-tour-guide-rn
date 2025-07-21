@@ -1,9 +1,9 @@
 import React from 'react';
 import { View, Text, Pressable, FlatList, ScrollView } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
-import { Tour } from '~/types';
-import { SquareTourCard } from '../../../ui/molecules';
-import { EmptyState } from '../../../ui/molecules/EmptyState';
+import { Tour } from '@/types';
+import { SquareTourCard } from '@/ui/molecules';
+import { EmptyState } from '@/ui/molecules/EmptyState';
 
 interface NearbyToursSectionProps {
   tours: Tour[];

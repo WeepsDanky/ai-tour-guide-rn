@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, Image, Pressable } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
-import { Tour } from '~/types';
+import { Tour } from '@/types';
 
 interface SquareTourCardProps {
   tour: Tour;

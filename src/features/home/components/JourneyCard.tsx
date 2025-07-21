@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, Image, Pressable } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
-import { Card, CardContent } from '../../../ui';
+import { Card, CardContent } from '@/ui';
 import { Journey } from './MyJourneysSection';
 
 /**

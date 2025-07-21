@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, memo, useState } from 'react';
 import { View, Text } from 'react-native';
 import MapView, { Marker, Callout, PROVIDER_GOOGLE, Polyline } from 'react-native-maps';
-import { Tour, POI } from '~/types';
+import { Tour, POI } from '@/types';
 
 // --- New Memoized POI Marker Component ---
 interface POIMarkerProps {

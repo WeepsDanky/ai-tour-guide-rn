@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { View, Text, Switch, Alert, Pressable, ScrollView } from 'react-native';
 import { Stack } from 'expo-router';
 import { FontAwesome } from '@expo/vector-icons';
-import { ScreenLayout } from '../../src/ui/layout/ScreenLayout';
-import { Card, CardContent } from '../../src/ui/molecules/Card';
+import { ScreenLayout } from '@/ui/layout/ScreenLayout';
+import { Card, CardContent } from '@/ui/molecules/Card';
 
 export default function SettingsScreen() {
   // Notification Settings
@@ -111,24 +111,23 @@ export default function SettingsScreen() {
   );
 
   return (
-    <>
-      <Stack.Screen options={{ headerShown: false }} />
+    <View className="flex-1">
+      <Stack.Screen options={{ title: 'Settings', headerShown: false }} />
       <ScreenLayout
-        title="Settings"
-        subtitle="Customize your app experience"
         showBackButton={true}
         variant="large"
+        title="Settings"
       >
         <ScrollView 
-          className="flex-1 p-4 space-y-6"
+          className="flex-1 p-4 space-y-6 bg-white"
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 20 }}
         >
           
           {/* Notifications */}
-          <Card>
+          <Card className="mb-4">
             <CardContent>
-              <Text className="text-lg font-semibold text-gray-900 mb-4">
+              <Text className="text-lg font-semibold text-gray-900">
                 Notifications
               </Text>
               
@@ -159,7 +158,7 @@ export default function SettingsScreen() {
           </Card>
 
           {/* Audio & Voice */}
-          <Card>
+          <Card className="mb-4">
             <CardContent>
               <Text className="text-lg font-semibold text-gray-900 mb-4">
                 Audio & Voice
@@ -229,6 +228,6 @@ export default function SettingsScreen() {
 
         </ScrollView>
       </ScreenLayout>
-    </>
+    </View>
   );
 } 

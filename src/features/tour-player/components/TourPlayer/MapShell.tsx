@@ -1,10 +1,9 @@
 import React, { forwardRef, useState } from 'react';
 import { View, Alert, Text } from 'react-native';
-import MapView, { Marker, Polyline, Region } from 'react-native-maps';
+import MapView, { Marker, Polyline } from 'react-native-maps';
 import { FontAwesome } from '@expo/vector-icons';
-import { Tour, POI } from '~/types';
-import { LoadingIndicator } from '../../../../ui/atoms/LoadingIndicator';
-import { createMarkerProps, createPolylineProps, animateToRegion } from '../../../../lib/map';
+import { Tour, POI } from '@/types';
+import { LoadingIndicator } from '@/ui/atoms/LoadingIndicator';
 
 interface MapShellProps {
   tour: Tour;

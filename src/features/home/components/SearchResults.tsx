@@ -1,8 +1,8 @@
 import React from 'react';
 import { View, Text, FlatList, Pressable } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
-import { EmptyState, LoadingIndicator, TourCard } from '../../../ui';
-import { Tour } from '~/types';
+import { EmptyState, LoadingIndicator, TourCard } from '@/ui';
+import { Tour } from '@/types';
 
 /**
  * Props for the SearchResults component

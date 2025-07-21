@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAudioPlayer as useExpoAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
-import { POI } from '~/types';
+import { POI } from '@/types';
 import { AudioPlayerStatus, AudioPlayerControls } from './types';
 import { calculateDistance } from '@/lib/map';
 

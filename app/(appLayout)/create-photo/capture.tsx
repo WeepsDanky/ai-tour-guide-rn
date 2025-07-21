@@ -7,12 +7,12 @@ import * as Location from 'expo-location';
 import { FontAwesome } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { useCreateTour } from '../../../src/context/CreateTourContext';
-import { LocationPill } from '../../../src/ui/molecules/LocationPill';
-import { ShutterButton, FlipButton, ChooseFromLibraryButton } from '../../../src/ui/atoms';
-import { EmptyState } from '../../../src/ui/molecules/EmptyState';
-import { Container } from '../../../src/ui/atoms/Container';
-import { LoadingIndicator } from '../../../src/ui/atoms/LoadingIndicator';
+import { useCreateTour } from '@/features/create-tour/context/CreateTourContext';
+import { Container } from '@/ui/atoms/Container';
+import { LoadingIndicator } from '@/ui/atoms/LoadingIndicator';
+import { ShutterButton, FlipButton, ChooseFromLibraryButton } from '@/ui/atoms';
+import { EmptyState } from '@/ui/molecules/EmptyState';
+import { LocationPill } from '@/ui/molecules/LocationPill';
 
 export default function CapturePhotoScreen() {
   const [cameraType, setCameraType] = useState<CameraType>('back');

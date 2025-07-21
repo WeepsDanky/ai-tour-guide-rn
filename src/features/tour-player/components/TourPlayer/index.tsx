@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { View, Alert, Pressable, Text, ScrollView } from 'react-native';
 import MapView from 'react-native-maps';
-import { Tour, POI, PlaybackState, GeofenceEvent } from '~/types';
+import { Tour, POI, PlaybackState, GeofenceEvent } from '@/types';
 import { FontAwesome } from '@expo/vector-icons';
 
 interface TourPlayerProps {
@@ -26,8 +26,6 @@ export function TourPlayer({
   });
   const [internalCurrentPOI, setInternalCurrentPOI] = useState<POI | null>(null);
   const [visitedPOIs, setVisitedPOIs] = useState<Set<string>>(new Set());
-  const [showPOIList, setShowPOIList] = useState(false);
-  const [showTourInfo, setShowTourInfo] = useState(true);
 
   const mapRef = useRef<MapView>(null);
 

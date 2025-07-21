@@ -4,7 +4,7 @@ import { AuthUser, LogInUserResponse } from '@/types/auth';
 import { login as apiLogin } from '@/services/auth.service';
 
 const TOKEN_KEY = 'auth-token';
-const USER_KEY = 'user-data'; // Key for storing user data
+const USER_KEY = 'user-data'; 
 
 interface AuthContextType {
   signIn: (username: string, password: string) => Promise<LogInUserResponse | undefined>;

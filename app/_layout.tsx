@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
-import { CreateTourProvider } from '@/context/CreateTourContext';
+import { CreateTourProvider } from '@/features/create-tour/context/CreateTourContext';
 import SplashScreen from './splash'; // Import the splash screen component
 
 // Custom hook to protect routes

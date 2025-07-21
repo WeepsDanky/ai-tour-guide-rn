@@ -1,24 +1,31 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { View, Pressable } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { FontAwesome } from '@expo/vector-icons';
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { useRouter } from 'expo-router';
 import * as Location from 'expo-location';
-import { Container } from '../../src/ui/atoms/Container';
-import { TourMap } from '../../src/features/tour-player/components/TourMap';
-import { TourInfoDropdown } from '../../src/features/tour-player/components/TourInfoDropdown';
-import { AudioPlayer } from '../../src/features/tour-player/components/AudioPlayer';
-import { EmptyState } from '../../src/ui/molecules/EmptyState';
-import { Tour, POI } from '~/types';
+import { Tour, POI } from '@/types';
 import { getTourById } from '@/services/tour.service';
 
-// ---- Navigation options ----
-export const navigationOptions = {
-  headerShown: false,
-};
+interface UseTourPlaybackOptions {
+  tourId?: string;
+  tourData?: string;
+}
 
-export default function MapScreen() {
-  // ----------------- Router params & navigation  -----------------
-  const { tourId, tourData } = useLocalSearchParams<{ tourId?: string; tourData?: string }>();
+interface UseTourPlaybackReturn {
+  // State
+  tour: Tour | null;
+  currentPOI: POI | null;
+  currentLocation: { lat: number; lng: number } | null;
+  isLoading: boolean;
+  error: string | null;
+  showAudioPlayer: boolean;
+  
+  // Handlers
+  handleTourExit: () => void;
+  handlePOISelect: (poi: POI) => void;
+  handleAudioPlayerClose: () => void;
+  handleShowAudioPlayer: () => void;
+}
+
+export function useTourPlayback({ tourId, tourData }: UseTourPlaybackOptions): UseTourPlaybackReturn {
   const router = useRouter();
 
   // ----------------- Component state -----------------
@@ -132,66 +139,19 @@ export default function MapScreen() {
     setShowAudioPlayer(true);
   }, []);
 
-  // ----------------- Render -----------------
-  if (isLoading) {
-    return (
-      <Container>
-        <EmptyState
-          icon="clock-o"
-          title="Loading Tour"
-          description="Please wait while we load your tour..."
-        />
-      </Container>
-    );
-  }
-
-  if (error || !tour) {
-    return (
-      <Container>
-        <EmptyState
-          icon="exclamation-triangle"
-          title="Unable to Load Tour"
-          description={error || 'The requested tour could not be found.'}
-          actionText="Go Back"
-          onAction={handleTourExit}
-        />
-      </Container>
-    );
-  }
-
-  return (
-    <View className="flex-1 bg-white">
-      {/* Main Map View */}
-      <View className="flex-1 relative mt-14">
-        <TourInfoDropdown tour={tour} />
-        <TourMap tour={tour} currentPOI={currentPOI} onPOISelect={handlePOISelect} />
-
-        <Pressable
-          onPress={handleTourExit}
-          className="absolute top-12 left-4 w-10 h-10 items-center justify-center rounded-full bg-white shadow-lg z-10"
-        >
-          <FontAwesome name="arrow-left" size={20} color="#374151" />
-        </Pressable>
-
-        {/* Show Audio Player Button - appears when audio player is hidden */}
-        {!showAudioPlayer && (
-          <Pressable
-            onPress={handleShowAudioPlayer}
-            className="absolute bottom-4 right-4 w-14 h-14 items-center justify-center rounded-full bg-blue-500 shadow-lg z-10"
-          >
-            <FontAwesome name="headphones" size={24} color="white" />
-          </Pressable>
-        )}
-      </View>
-
-      {/* Audio Player - Always present but can be hidden */}
-      {showAudioPlayer && (
-        <AudioPlayer 
-          tour={tour} 
-          currentLocation={currentLocation}
-          onClose={handleAudioPlayerClose} 
-        />
-      )}
-    </View>
-  );
+  return {
+    // State
+    tour,
+    currentPOI,
+    currentLocation,
+    isLoading,
+    error,
+    showAudioPlayer,
+    
+    // Handlers
+    handleTourExit,
+    handlePOISelect,
+    handleAudioPlayerClose,
+    handleShowAudioPlayer,
+  };
 }

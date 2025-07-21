@@ -1,7 +1,7 @@
 import React from 'react';
 import { View } from 'react-native';
-import { Tour } from '~/types';
-import { TourCard } from '../../../ui/molecules/TourCard';
+import { Tour } from '@/types';
+import { TourCard } from '@/ui/molecules/TourCard';
 
 interface BentoGridProps {
   tours: Tour[];

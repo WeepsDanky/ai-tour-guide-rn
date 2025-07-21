@@ -5,8 +5,8 @@ export default function AppLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="help" options={{ headerShown: false }} />
+        <Stack.Screen name="(tabs)" options={{ title: 'Home', headerShown: false }} />
+        <Stack.Screen name="profile/help" options={{ headerShown: false }} />
         <Stack.Screen name="create-photo/capture" options={{ 
           title: 'Camera', 
           presentation: 'fullScreenModal',
@@ -23,11 +23,8 @@ export default function AppLayout() {
           headerShown: false,
           gestureEnabled: false
         }} />
-        <Stack.Screen name="map" options={{ title: 'Tour Map', presentation: 'fullScreenModal', headerShown: false }} />
-        <Stack.Screen name="tour" options={{ title: 'Tour Details' }} />
-        <Stack.Screen name="settings" options={{ headerShown: false }} />
-        <Stack.Screen name="tour-history" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ title: 'Modal', presentation: 'modal' }} />
+        <Stack.Screen name="(map)/map" options={{ title: 'Tour Map' }} />
+        <Stack.Screen name="profile/settings" options={{ headerShown: false }} />
       </Stack>
     </GestureHandlerRootView>
   );

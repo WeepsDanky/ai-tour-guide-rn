@@ -1,15 +1,13 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, ScrollView, RefreshControl, Alert, Text } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
-import { SearchBar } from '../../../src/features/tour-player/components/SearchBar';
-import { NearbyToursSection } from '../../../src/features/home/components/NearbyToursSection';
-import { RecommendedToursSection } from '../../../src/features/home/components/RecommendedToursSection';
-import { EmptyState } from '../../../src/ui/molecules/EmptyState';
-import { Tour } from '~/types';
+import { SearchBar } from '@/features/tour-player/components/SearchBar';
+import { NearbyToursSection } from '@/features/home/components/NearbyToursSection';
+import { EmptyState } from '@/ui/molecules/EmptyState';
+import { Tour } from '@/types';
 import { getAllTours } from '@/services/tour.service';
 
 export default function DiscoverScreen() {
-  // State Management
   const [tours, setTours] = useState<Tour[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -19,18 +17,15 @@ export default function DiscoverScreen() {
 
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // Data Loading Functions
   const loadInitialData = useCallback(async () => {
     try {
       setLoading(true);
       
-      // THIS IS NOW AN ASYNC CALL TO THE BACKEND
       const fetchedTours = await getAllTours();
       setTours(fetchedTours);
       
-      // Simulate getting user location - replace with actual location service
+      // TODO: Get user's actual location
       setUserLocation('New York, NY');
-      
     } catch (error) {
       console.error('Failed to load discovery data:', error);
       Alert.alert('Error', 'Failed to load tours. Please try again.');
@@ -39,7 +34,6 @@ export default function DiscoverScreen() {
     }
   }, []);
 
-  // Initialize data on mount
   useEffect(() => {
     if (!isInitialized) {
       loadInitialData();
@@ -53,7 +47,6 @@ export default function DiscoverScreen() {
     setRefreshing(false);
   }, [loadInitialData]);
 
-  // Navigation Handlers
   const handleTourPress = useCallback((tour: Tour) => {
     router.push({
       pathname: '/map',
@@ -65,9 +58,7 @@ export default function DiscoverScreen() {
     router.push('/create');
   }, [router]);
 
-  // Data Processing
   const nearbyTours = useMemo(() => tours.slice(0, 5), [tours]); 
-  const recommendedTours = useMemo(() => tours.slice(2, 8), [tours]);
 
   return (
     <View className="flex-1 bg-gray-50">
@@ -119,11 +110,6 @@ export default function DiscoverScreen() {
                 onTourPress={handleTourPress}
                 userLocation={userLocation}
               />
-              <RecommendedToursSection
-                tours={[]}
-                loading={true}
-                onTourPress={handleTourPress}
-              />
             </View>
           ) : tours.length === 0 ? (
             // Empty State - No tours available
@@ -144,7 +130,7 @@ export default function DiscoverScreen() {
                 title="Enable Location"
                 description="Allow location access to discover amazing tours near you and get personalized recommendations."
                 actionText="Enable Location"
-                onAction={() => {}}
+                onAction={() => {}} // TODO: Implement location permission request
               />
             </View>
           ) : (
@@ -155,12 +141,6 @@ export default function DiscoverScreen() {
                 tours={nearbyTours}
                 onTourPress={handleTourPress}
                 userLocation={userLocation}
-              />
-
-              {/* Recommended Tours Section */}
-              <RecommendedToursSection
-                tours={recommendedTours}
-                onTourPress={handleTourPress}
               />
             </View>
           )}

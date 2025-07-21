@@ -1,8 +1,8 @@
 import React from 'react';
 import { View, Text, Pressable, Image } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
-import { Tour, POI, PlaybackState } from '~/types';
-import { ProgressIndicator } from '../../../../ui/atoms/ProgressIndicator';
+import { Tour, POI, PlaybackState } from '@/types';
+import { ProgressIndicator } from '@/ui/atoms/ProgressIndicator';
 
 interface TourInfoPanelProps {
   tour: Tour;

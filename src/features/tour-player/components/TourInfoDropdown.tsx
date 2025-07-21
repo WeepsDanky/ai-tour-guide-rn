@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
-import { Tour } from '~/types';
+import { Tour } from '@/types';
 
 interface TourInfoDropdownProps {
   tour: Tour;

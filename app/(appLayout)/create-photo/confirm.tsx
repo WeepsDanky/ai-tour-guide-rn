@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
-import { View, Text, ImageBackground, Pressable, ScrollView, Alert } from 'react-native';
+import { View, ImageBackground, Pressable, Alert, Text } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { FontAwesome } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { useCreateTour } from '../../../src/context/CreateTourContext';
-import { LocationPill } from '../../../src/ui/molecules/LocationPill';
-import { TextArea } from '../../../src/ui/atoms/TextArea';
-import { Button } from '../../../src/ui/atoms/Button';
+import { useCreateTour } from '@/features/create-tour/context/CreateTourContext';
+import { LocationPill } from '@/ui/molecules/LocationPill';
+import { TextArea } from '@/ui/atoms/TextArea';
+import { Button } from '@/ui/atoms/Button';
 
 export default function ConfirmPhotoScreen() {
   const router = useRouter();

@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, Pressable, ScrollView } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
-import { EmptyState } from '../../../ui/molecules/EmptyState';
+import { EmptyState } from '@/ui/molecules/EmptyState';
 
 export interface Journey {
   id: string;
