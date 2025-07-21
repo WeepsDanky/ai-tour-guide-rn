@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { View, Pressable } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { FontAwesome } from '@expo/vector-icons';
@@ -10,8 +10,6 @@ import { Tour, POI } from '~/types';
 import { getTourById } from '@/services/tour.service';
 
 // ---- Navigation options ----
-// Putting this at the module level avoids re‑creating navigation options on each render,
-// preventing React Navigation from remounting the screen.
 export const navigationOptions = {
   headerShown: false,
 };
@@ -27,24 +25,12 @@ export default function MapScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Guard flag stored in a ref so changing it **won't** trigger a rerender
-  // and therefore will never appear in the dependency array.
   const hasFetchedRef = useRef(false);
-
-  // ----------------- Debug logs for mount / unmount -----------------
-  // useEffect(() => {
-  //   console.log('🟢 MapScreen mounted');
-  //   return () => {
-  //     console.log('🔴 MapScreen unmounted');
-  //   };
-  // }, []);
 
   // ----------------- Data loading -----------------
   useEffect(() => {
     if ((tourId || tourData) && !hasFetchedRef.current) {
-      // Mark as fetched BEFORE the async call starts to avoid race‑condition loops
       hasFetchedRef.current = true;
-      // console.log('[MapScreen] Starting loadTour', { tourId, tourData });
 
       const loadTour = async () => {
         setIsLoading(true);
@@ -53,10 +39,8 @@ export default function MapScreen() {
           let loadedTour: Tour | null = null;
 
           if (tourData) {
-            // console.log('[MapScreen] Using tourData param');
             loadedTour = JSON.parse(tourData as string);
           } else if (tourId) {
-            // console.log('[MapScreen] Fetching tour by ID', tourId);
             const tour = await getTourById(tourId as string);
             loadedTour = tour || null;
           }
@@ -64,12 +48,9 @@ export default function MapScreen() {
           if (!loadedTour) {
             throw new Error('No tour specified or found.');
           }
-
-          // console.log('[MapScreen] Tour loaded ✓', loadedTour);
           setTour(loadedTour);
         } catch (err) {
           const message = err instanceof Error ? err.message : 'Failed to load tour data';
-          // console.error('[MapScreen] Load error:', message); 
           setError(message);
         } finally {
           setIsLoading(false);
@@ -81,10 +62,13 @@ export default function MapScreen() {
   }, [tourId, tourData]);
 
   // ----------------- Handlers -----------------
-  const handleTourExit = () => {
-    // console.log('[MapScreen] Exit pressed, router.back()');
+  const handleTourExit = useCallback(() => {
     router.back();
-  };
+  }, [router]);
+
+  const handlePOISelect = useCallback((poi: POI) => {
+    setCurrentPOI(poi);
+  }, []);
 
   // ----------------- Render -----------------
   if (isLoading) {
@@ -118,7 +102,7 @@ export default function MapScreen() {
       {/* Main Map View */}
       <View className="flex-1 relative">
         <TourInfoDropdown tour={tour} />
-        <TourMap tour={tour} currentPOI={currentPOI} onPOISelect={setCurrentPOI} />
+        <TourMap tour={tour} currentPOI={currentPOI} onPOISelect={handlePOISelect} />
 
         <Pressable
           onPress={handleTourExit}
