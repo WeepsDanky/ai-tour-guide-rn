@@ -2,9 +2,11 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { View, Pressable } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { FontAwesome } from '@expo/vector-icons';
+import * as Location from 'expo-location';
 import { Container } from '../../src/ui/atoms/Container';
 import { TourMap } from '../../src/features/tour-player/components/TourMap';
 import { TourInfoDropdown } from '../../src/features/tour-player/components/TourInfoDropdown';
+import { AudioPlayer } from '../../src/features/tour-player/components/AudioPlayer';
 import { EmptyState } from '../../src/ui/molecules/EmptyState';
 import { Tour, POI } from '~/types';
 import { getTourById } from '@/services/tour.service';
@@ -22,10 +24,62 @@ export default function MapScreen() {
   // ----------------- Component state -----------------
   const [tour, setTour] = useState<Tour | null>(null);
   const [currentPOI, setCurrentPOI] = useState<POI | null>(null);
+  const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showAudioPlayer, setShowAudioPlayer] = useState(true);
 
   const hasFetchedRef = useRef(false);
+  const locationSubscription = useRef<Location.LocationSubscription | null>(null);
+
+  // ----------------- Location tracking -----------------
+  useEffect(() => {
+    const startLocationTracking = async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          console.warn('Location permission denied');
+          return;
+        }
+
+        // Get initial location
+        const initialLocation = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.High,
+        });
+        
+        setCurrentLocation({
+          lat: initialLocation.coords.latitude,
+          lng: initialLocation.coords.longitude,
+        });
+
+        // Start watching location
+        locationSubscription.current = await Location.watchPositionAsync(
+          {
+            accuracy: Location.Accuracy.High,
+            timeInterval: 5000, // 5 seconds
+            distanceInterval: 10, // 10 meters
+          },
+          (location) => {
+            setCurrentLocation({
+              lat: location.coords.latitude,
+              lng: location.coords.longitude,
+            });
+          }
+        );
+      } catch (err) {
+        console.error('Failed to start location tracking:', err);
+      }
+    };
+
+    startLocationTracking();
+
+    return () => {
+      if (locationSubscription.current) {
+        locationSubscription.current.remove();
+        locationSubscription.current = null;
+      }
+    };
+  }, []);
 
   // ----------------- Data loading -----------------
   useEffect(() => {
@@ -70,6 +124,14 @@ export default function MapScreen() {
     setCurrentPOI(poi);
   }, []);
 
+  const handleAudioPlayerClose = useCallback(() => {
+    setShowAudioPlayer(false);
+  }, []);
+
+  const handleShowAudioPlayer = useCallback(() => {
+    setShowAudioPlayer(true);
+  }, []);
+
   // ----------------- Render -----------------
   if (isLoading) {
     return (
@@ -110,7 +172,26 @@ export default function MapScreen() {
         >
           <FontAwesome name="arrow-left" size={20} color="#374151" />
         </Pressable>
+
+        {/* Show Audio Player Button - appears when audio player is hidden */}
+        {!showAudioPlayer && (
+          <Pressable
+            onPress={handleShowAudioPlayer}
+            className="absolute bottom-4 right-4 w-14 h-14 items-center justify-center rounded-full bg-blue-500 shadow-lg z-10"
+          >
+            <FontAwesome name="headphones" size={24} color="white" />
+          </Pressable>
+        )}
       </View>
+
+      {/* Audio Player - Always present but can be hidden */}
+      {showAudioPlayer && (
+        <AudioPlayer 
+          tour={tour} 
+          currentLocation={currentLocation}
+          onClose={handleAudioPlayerClose} 
+        />
+      )}
     </View>
   );
 }
