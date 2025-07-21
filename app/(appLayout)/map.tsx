@@ -100,7 +100,7 @@ export default function MapScreen() {
   return (
     <View className="flex-1 bg-white">
       {/* Main Map View */}
-      <View className="flex-1 relative">
+      <View className="flex-1 relative mt-14">
         <TourInfoDropdown tour={tour} />
         <TourMap tour={tour} currentPOI={currentPOI} onPOISelect={handlePOISelect} />
 
