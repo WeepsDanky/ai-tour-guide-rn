@@ -4,10 +4,10 @@ import { Stack, useRouter } from 'expo-router';
 import { FontAwesome } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { useCreateTour } from '../../src/context/CreateTourContext';
-import { LocationPill } from '../../src/ui/molecules/LocationPill';
-import { TextArea } from '../../src/ui/atoms/TextArea';
-import { Button } from '../../src/ui/atoms/Button';
+import { useCreateTour } from '../../../src/context/CreateTourContext';
+import { LocationPill } from '../../../src/ui/molecules/LocationPill';
+import { TextArea } from '../../../src/ui/atoms/TextArea';
+import { Button } from '../../../src/ui/atoms/Button';
 
 export default function ConfirmPhotoScreen() {
   const router = useRouter();

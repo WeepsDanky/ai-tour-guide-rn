@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, ScrollView, RefreshControl, Alert, Text } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
-import { SearchBar } from '../../src/features/tour-player/components/SearchBar';
-import { NearbyToursSection } from '../../src/features/home/components/NearbyToursSection';
-import { RecommendedToursSection } from '../../src/features/home/components/RecommendedToursSection';
-import { EmptyState } from '../../src/ui/molecules/EmptyState';
+import { SearchBar } from '../../../src/features/tour-player/components/SearchBar';
+import { NearbyToursSection } from '../../../src/features/home/components/NearbyToursSection';
+import { RecommendedToursSection } from '../../../src/features/home/components/RecommendedToursSection';
+import { EmptyState } from '../../../src/ui/molecules/EmptyState';
 import { Tour } from '~/types';
 import { getAllTours } from '@/services/tour.service';
 

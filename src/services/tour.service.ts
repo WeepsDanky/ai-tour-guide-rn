@@ -1,7 +1,7 @@
 // src/services/tour.service.ts
 import { fetcher, postData, pollTaskProgress as pollApiProgress } from '@/lib/fetcher';
-import { Tour, TourRequest } from '~/types';
-import type { TourGenerationTask } from '~/types';
+import { Tour, TourRequest } from '@/types';
+import type { TourGenerationTask } from '@/types';
 
 /**
  * Fetches all available tours from the backend.

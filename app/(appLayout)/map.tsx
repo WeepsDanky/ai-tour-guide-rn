@@ -2,10 +2,10 @@ import React, { useEffect, useRef, useState } from 'react';
 import { View, Pressable } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { FontAwesome } from '@expo/vector-icons';
-import { Container } from '../src/ui/atoms/Container';
-import { TourMap } from '../src/features/tour-player/components/TourMap';
-import { TourInfoDropdown } from '../src/features/tour-player/components/TourInfoDropdown';
-import { EmptyState } from '../src/ui/molecules/EmptyState';
+import { Container } from '../../src/ui/atoms/Container';
+import { TourMap } from '../../src/features/tour-player/components/TourMap';
+import { TourInfoDropdown } from '../../src/features/tour-player/components/TourInfoDropdown';
+import { EmptyState } from '../../src/ui/molecules/EmptyState';
 import { Tour, POI } from '~/types';
 import { getTourById } from '@/services/tour.service';
 
@@ -57,7 +57,8 @@ export default function MapScreen() {
             loadedTour = JSON.parse(tourData as string);
           } else if (tourId) {
             // console.log('[MapScreen] Fetching tour by ID', tourId);
-            loadedTour = await getTourById(tourId as string);
+            const tour = await getTourById(tourId as string);
+            loadedTour = tour || null;
           }
 
           if (!loadedTour) {

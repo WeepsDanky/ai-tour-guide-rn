@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { View, Text, Switch, Alert, Pressable, ScrollView } from 'react-native';
 import { Stack } from 'expo-router';
 import { FontAwesome } from '@expo/vector-icons';
-import { ScreenLayout } from '../src/ui/layout/ScreenLayout';
-import { Card, CardContent } from '../src/ui/molecules/Card';
+import { ScreenLayout } from '../../src/ui/layout/ScreenLayout';
+import { Card, CardContent } from '../../src/ui/molecules/Card';
 
 export default function SettingsScreen() {
   // Notification Settings

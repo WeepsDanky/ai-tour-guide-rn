@@ -1,3 +1,7 @@
+import * as SecureStore from 'expo-secure-store';
+
+const TOKEN_KEY = 'auth-token';
+
 /**
  * Standard API response interface
  */
@@ -30,10 +34,25 @@ export interface RequestOptions {
  * @param timeout Timeout in milliseconds (default: 10000)
  * @returns Promise resolving to fetch response
  */
+/**
+ * Get headers with authorization token if available
+ */
+const getHeaders = async (customHeaders: Record<string, string> = {}) => {
+  const token = await SecureStore.getItemAsync(TOKEN_KEY);
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...customHeaders,
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return headers;
+};
+
 async function fetchWithTimeout(
   url: string, 
   options: RequestInit = {}, 
-  timeout = 10000
+  timeout = 15000 // Increased timeout
 ): Promise<Response> {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeout);
@@ -65,13 +84,9 @@ export const fetcher = async <T = any>(
 ): Promise<T> => {
   const fullUrl = `${process.env.EXPO_PUBLIC_BACKEND_URL}${path}`;
   console.log('Fetching:', fullUrl);
+  const headers = await getHeaders(options.headers);
   
-  const response = await fetchWithTimeout(fullUrl, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
-  }, options.timeout);
+  const response = await fetchWithTimeout(fullUrl, { headers }, options.timeout);
   
   if (!response.ok) {
     throw new Error(`HTTP error! status: ${response.status}`);
@@ -96,14 +111,12 @@ export const postData = async <T = any>(
 ): Promise<APIResponse<T>> => {
   const fullUrl = `${process.env.EXPO_PUBLIC_BACKEND_URL}${path}`;
   console.log('Posting to:', fullUrl);
-  
+  const headers = await getHeaders(options.headers);
+
   try {
     const response = await fetchWithTimeout(fullUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
+      headers,
       body: JSON.stringify(data),
     }, options.timeout);
     
@@ -142,10 +155,9 @@ export const pollTaskProgress = async (
   options: RequestOptions = {}
 ): Promise<any> => {
   const url = `${process.env.EXPO_PUBLIC_BACKEND_URL}/api/progress/${taskId}`;
+  const headers = await getHeaders(options.headers);
   
-  const response = await fetchWithTimeout(url, {
-    headers: options.headers,
-  }, options.timeout);
+  const response = await fetchWithTimeout(url, { headers }, options.timeout);
   
   if (!response.ok) {
     throw new Error(`HTTP error! status: ${response.status}`);

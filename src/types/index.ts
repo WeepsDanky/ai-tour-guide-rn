@@ -185,4 +185,9 @@ export interface RootParamList {
   tour: { tourId: string };
   settings: undefined;
   modal: undefined;
-} 
+}
+
+// =============================================================================
+// AUTHENTICATION TYPES
+// =============================================================================
+export * from './auth';

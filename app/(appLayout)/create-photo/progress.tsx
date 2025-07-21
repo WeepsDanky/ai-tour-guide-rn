@@ -3,13 +3,12 @@ import { View, Text } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { useCreateTour } from '../../src/context/CreateTourContext';
-import { Button } from '../../src/ui/atoms/Button';
-import { ProgressIndicator } from '../../src/ui/atoms/ProgressIndicator';
-import { LoadingIndicator } from '../../src/ui/atoms/LoadingIndicator';
+import { useCreateTour } from '../../../src/context/CreateTourContext';
+import { Button } from '../../../src/ui/atoms/Button';
+import { ProgressIndicator } from '../../../src/ui/atoms/ProgressIndicator';
+import { LoadingIndicator } from '../../../src/ui/atoms/LoadingIndicator';
 import { createTour, checkTourCreationProgress } from '@/services/tour.service';
-import type { TourGenerationTask } from '~/types';
-import { TourRequest } from '~/types';
+import type { TourGenerationTask, TourRequest } from '@/types';
 
 export default function TourProgressScreen() {
   const router = useRouter();
@@ -118,7 +117,7 @@ export default function TourProgressScreen() {
             
             <View className="bg-gray-50 rounded-lg p-6">
               <Text className="text-base text-gray-600 text-center">
-                We're creating your personalized tour experience. This may take a few moments...
+                We&apos;re creating your personalized tour experience. This may take a few moments...
               </Text>
             </View>
 

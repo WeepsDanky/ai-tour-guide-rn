@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, Alert, Image } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { ScreenLayout } from '../src/ui/layout/ScreenLayout';
-import { HeaderButton } from '../src/ui/layout/AppHeader';
-import { Card, CardContent } from '../src/ui/molecules/Card';
-import { Button } from '../src/ui/atoms/Button';
-import { LoadingIndicator } from '../src/ui/atoms/LoadingIndicator';
-import { EmptyState } from '../src/ui/molecules/EmptyState';
+import { ScreenLayout } from '../../src/ui/layout/ScreenLayout';
+import { HeaderButton } from '../../src/ui/layout/AppHeader';
+import { Card, CardContent } from '../../src/ui/molecules/Card';
+import { Button } from '../../src/ui/atoms/Button';
+import { LoadingIndicator } from '../../src/ui/atoms/LoadingIndicator';
+import { EmptyState } from '../../src/ui/molecules/EmptyState';
 import { FontAwesome } from '@expo/vector-icons';
 import { Tour } from '~/types';
 import { getTourById } from '@/services/tour.service';

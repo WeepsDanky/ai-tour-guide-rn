@@ -2,18 +2,24 @@ import React, { useState } from 'react';
 import { View, Text, ScrollView, Pressable, Alert } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { FontAwesome } from '@expo/vector-icons';
-import { Container } from '../../src/ui/atoms/Container';
-import { Button } from '../../src/ui/atoms/Button';
+import { Container } from '../../../src/ui/atoms/Container';
+import { Button } from '../../../src/ui/atoms/Button';
+import { useAuth } from '@/context/AuthContext';
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const [user] = useState({
-    name: 'Tour Explorer',
-    email: 'explorer@example.com',
-    toursCreated: 1,
-    toursCompleted: 3,
-    favoriteStyle: 'Cultural',
-  });
+  const { signOut, user } = useAuth();
+
+  const handleSignOut = () => {
+    Alert.alert(
+      '登出',
+      '您确定要登出吗？',
+      [
+        { text: '取消', style: 'cancel' },
+        { text: '确定', style: 'destructive', onPress: () => signOut() },
+      ]
+    );
+  };
 
   const menuItems = [
     {
@@ -44,7 +50,7 @@ export default function ProfileScreen() {
           {/* Header */}
           <View className="bg-white px-4 py-6 border-b border-gray-200">
             <Text className="text-3xl font-bold text-gray-900 mb-2">
-              Profile
+              个人中心
             </Text>
           </View>
 
@@ -54,22 +60,22 @@ export default function ProfileScreen() {
               <View className="w-20 h-20 bg-blue-500 rounded-full items-center justify-center mb-3">
                 <FontAwesome name="user" size={32} color="white" />
               </View>
-              <Text className="text-xl font-bold text-gray-900">{user.name}</Text>
-              <Text className="text-gray-600">{user.email}</Text>
+              <Text className="text-xl font-bold text-gray-900">{user?.nickname || 'Tour Explorer'}</Text>
+              <Text className="text-gray-600">{user?.email || 'explorer@example.com'}</Text>
             </View>
 
             {/* Stats */}
             <View className="flex-row justify-around border-t border-gray-200 pt-4">
               <View className="items-center">
-                <Text className="text-2xl font-bold text-blue-600">{user.toursCreated}</Text>
+                <Text className="text-2xl font-bold text-blue-600">1</Text>
                 <Text className="text-gray-600 text-sm">Tours Created</Text>
               </View>
               <View className="items-center">
-                <Text className="text-2xl font-bold text-green-600">{user.toursCompleted}</Text>
+                <Text className="text-2xl font-bold text-green-600">3</Text>
                 <Text className="text-gray-600 text-sm">Tours Completed</Text>
               </View>
               <View className="items-center">
-                <Text className="text-lg font-bold text-purple-600">{user.favoriteStyle}</Text>
+                <Text className="text-lg font-bold text-purple-600">Cultural</Text>
                 <Text className="text-gray-600 text-sm">Favorite Style</Text>
               </View>
             </View>
@@ -98,9 +104,9 @@ export default function ProfileScreen() {
           {/* Sign Out Button */}
           <View className="m-4">
             <Button
-              title="Sign Out"
+              title="登出"
               variant="danger"
-              onPress={() => Alert.alert('Sign Out', 'Sign out functionality will be available soon!')}
+              onPress={handleSignOut}
             />
           </View>
         </ScrollView>

@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import { View, Text, ScrollView, Pressable } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { FontAwesome } from '@expo/vector-icons';
-import { ScreenLayout } from '../src/ui/layout/ScreenLayout';
-import { Card, CardContent } from '../src/ui/molecules/Card';
-import { EmptyState } from '../src/ui/molecules/EmptyState';
+import { ScreenLayout } from '../../src/ui/layout/ScreenLayout';
+import { Card, CardContent } from '../../src/ui/molecules/Card';
+import { EmptyState } from '../../src/ui/molecules/EmptyState';
 
 interface CompletedTour {
   id: string;

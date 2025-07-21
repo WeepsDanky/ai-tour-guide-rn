@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
 import { FontAwesome } from '@expo/vector-icons';
-import { CustomTabBar } from '../../src/navigation/CustomTabBar';
+import { CustomTabBar } from '../../../src/navigation/CustomTabBar';
 
 export default function TabLayout() {
   return (
