@@ -62,33 +62,28 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
             </View>
           )}
           
-          <View className="flex-1">
-            {hasActivePOI ? (
-              <>
-                <Text className="text-sm text-gray-500">
-                  {isNearPOI ? 'Now Playing' : 'Audio Available'}
-                </Text>
-                <Text className="text-lg font-bold text-gray-900" numberOfLines={2}>
-                  {currentPOI.name}
-                </Text>
-                {currentPOI.description && (
-                  <Text className="text-sm text-gray-600 mt-1" numberOfLines={1}>
-                    {currentPOI.description}
-                  </Text>
+              <View className="flex-1">
+                {hasActivePOI ? (
+                  <>
+                    <Text className="text-sm text-gray-500">
+                      {isNearPOI ? 'Now Playing' : 'Audio Available'}
+                    </Text>
+                    <Text className="text-lg font-bold text-gray-900" numberOfLines={2}>
+                      {currentPOI.name}
+                    </Text>
+                    {currentPOI.description && (
+                      <Text className="text-sm text-gray-600 mt-1" numberOfLines={1}>
+                        {currentPOI.description}
+                      </Text>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <Text className="text-sm text-gray-500">Audio Tour Player</Text>
+                    <Text className="text-lg font-bold text-gray-900">Now Playing</Text>
+                  </>
                 )}
-              </>
-            ) : (
-              <>
-                <Text className="text-sm text-gray-500">Audio Tour Player</Text>
-                <Text className="text-lg font-bold text-gray-900">
-                  {isNearPOI 
-                    ? 'No audio available for this location' 
-                    : 'Walk near a point of interest to hear audio'
-                  }
-                </Text>
-              </>
-            )}
-          </View>
+              </View>
           
           <Pressable onPress={onClose} className="p-2 -mt-2 -mr-2">
             <FontAwesome name="times" size={20} color="#6B7280" />
@@ -96,8 +91,6 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
         </View>
 
         {/* Audio Controls - Only show if there's an active POI with audio */}
-        {hasActivePOI && (
-          <>
             {/* Slider and Time */}
             <View className="flex-row items-center w-full space-x-3 mb-4">
               <Text className="text-xs text-gray-500 w-10 text-center">
@@ -118,9 +111,6 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
 
             {/* Play/Pause Controls */}
             <View className="flex-row items-center justify-center space-x-8">
-              {status.isLoading || status.isBuffering ? (
-                <ActivityIndicator size="large" color="#3B82F6" />
-              ) : (
                 <Pressable
                   onPress={togglePlayPause}
                   className="w-16 h-16 bg-blue-500 rounded-full items-center justify-center shadow-md"
@@ -133,24 +123,12 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
                     style={{ marginLeft: status.isPlaying ? 0 : 4 }}
                   />
                 </Pressable>
-              )}
             </View>
-          </>
-        )}
-
         {/* Status Messages */}
         {!hasActivePOI && isNearPOI && (
           <View className="mt-2 p-3 bg-orange-50 rounded-lg">
             <Text className="text-orange-700 text-center text-sm">
               You&apos;re near a point of interest, but no audio is available.
-            </Text>
-          </View>
-        )}
-
-        {!isNearPOI && (
-          <View className="mt-2 p-3 bg-blue-50 rounded-lg">
-            <Text className="text-blue-700 text-center text-sm">
-              Walk near any point of interest to automatically hear its audio guide.
             </Text>
           </View>
         )}
