@@ -20,10 +20,12 @@ export default function MapScreen() {
       </Container>
     );
   }
-  if (error || !tour) {
+  
+  // Show error only if there was an error AND tour parameters were provided
+  if (error && (tourId || tourData)) {
     return (
       <Container>
-        <EmptyState icon="exclamation-triangle" title="Unable to Load Tour" description={error || 'The requested tour could not be found.'} actionText="Go Back" onAction={handleTourExit} />
+        <EmptyState icon="exclamation-triangle" title="Unable to Load Tour" description={error} actionText="Go Back" onAction={handleTourExit} />
       </Container>
     );
   }
@@ -31,9 +33,9 @@ export default function MapScreen() {
   return (
     <View className="flex-1 bg-white">
       <View className="flex-1 relative">
-        <TourInfoDropdown tour={tour} />
+        {tour && <TourInfoDropdown tour={tour} />}
         <TourMap tour={tour} currentPOI={currentPOI} onPOISelect={handlePOISelect} />
-        {!showAudioPlayer && (
+        {tour && !showAudioPlayer && (
           <AudioPlayerButton
             onPress={handleShowAudioPlayer}
             style={{ position: 'absolute', bottom: 16, right: 16, width: 56, height: 56, zIndex: 10 }}
@@ -42,7 +44,7 @@ export default function MapScreen() {
           />
         )}
       </View>
-      {showAudioPlayer && (
+      {tour && showAudioPlayer && (
         <AudioPlayer 
           tour={tour} 
           currentLocation={currentLocation}

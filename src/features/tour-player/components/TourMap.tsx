@@ -65,7 +65,7 @@ POIMarker.displayName = 'POIMarker';
 
 // --- Main TourMap Component ---
 interface TourMapProps {
-  tour: Tour;
+  tour: Tour | null;
   currentPOI?: POI | null;
   onPOISelect?: (poi: POI) => void;
 }
@@ -73,16 +73,21 @@ interface TourMapProps {
 export const TourMap = memo(({ tour, currentPOI, onPOISelect }: TourMapProps) => {
   const mapRef = useRef<MapView>(null);
 
-  const initialRegion = tour.pois[0] ? {
+  const initialRegion = tour?.pois[0] ? {
     latitude: tour.pois[0].coord.lat,
     longitude: tour.pois[0].coord.lng,
     latitudeDelta: 0.0922,
     longitudeDelta: 0.0421,
-  } : undefined;
+  } : {
+    latitude: 37.7749, // Default to San Francisco
+    longitude: -122.4194,
+    latitudeDelta: 0.0922,
+    longitudeDelta: 0.0421,
+  };
 
   // Animate to the selected POI or fit all markers on initial load
   useEffect(() => {
-    if (mapRef.current) {
+    if (mapRef.current && tour) {
         if (currentPOI) {
             mapRef.current.animateToRegion({
                 latitude: currentPOI.coord.lat,
@@ -101,15 +106,15 @@ export const TourMap = memo(({ tour, currentPOI, onPOISelect }: TourMapProps) =>
             );
         }
     }
-  }, [currentPOI, tour.pois]);
+  }, [currentPOI, tour]);
 
 
   const polylineCoords = React.useMemo(() => {
-    return tour.route ? tour.route.map(([lng, lat]) => ({
+    return tour?.route ? tour.route.map(([lng, lat]) => ({
       latitude: lat,
       longitude: lng,
     })) : [];
-  }, [tour.route]);
+  }, [tour?.route]);
 
   return (
     <View className="flex-1">
@@ -126,7 +131,7 @@ export const TourMap = memo(({ tour, currentPOI, onPOISelect }: TourMapProps) =>
         moveOnMarkerPress={false}
       >
         {/* Render memoized markers */}
-        {tour.pois.map((poi, index) => (
+        {tour?.pois.map((poi, index) => (
           <POIMarker
             key={poi.id}
             poi={poi}

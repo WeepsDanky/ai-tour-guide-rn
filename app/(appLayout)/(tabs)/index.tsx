@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, ScrollView, RefreshControl, Alert, Text } from 'react-native';
-import { Stack, useRouter } from 'expo-router';
+import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { SearchBar } from '@/features/tour-player/components/SearchBar';
 import { NearbyToursSection } from '@/features/home/components/NearbyToursSection';
 import { EmptyState } from '@/ui/molecules/EmptyState';
 import { Tour } from '@/types';
 import { getAllTours } from '@/services/tour.service';
+import { CreateTourModal } from '@/features/create-tour';
 
 export default function DiscoverScreen() {
   const [tours, setTours] = useState<Tour[]>([]);
@@ -14,8 +15,18 @@ export default function DiscoverScreen() {
   const [userLocation, setUserLocation] = useState<string>('');
   
   const router = useRouter();
+  const params = useLocalSearchParams();
 
+  const [isCreateModalVisible, setCreateModalVisible] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
+
+  useEffect(() => {
+    if (params.showCreateModal === 'true') {
+      setCreateModalVisible(true);
+      // Clear the param to prevent re-triggering on screen focus
+      router.setParams({ showCreateModal: undefined });
+    }
+  }, [params.showCreateModal, router]);
 
   const loadInitialData = useCallback(async () => {
     try {
@@ -55,9 +66,9 @@ export default function DiscoverScreen() {
   }, [router]);
 
   const handleCreateTour = useCallback(() => {
-    router.push('/create');
-  }, [router]);
-
+    setCreateModalVisible(true);
+  }, []);
+  
   const nearbyTours = useMemo(() => tours.slice(0, 5), [tours]); 
 
   return (
@@ -146,6 +157,11 @@ export default function DiscoverScreen() {
           )}
         </ScrollView>
       </View>
+      
+      <CreateTourModal 
+        isVisible={isCreateModalVisible}
+        onClose={() => setCreateModalVisible(false)}
+      />
     </View>
   );
-} 
+}

@@ -41,7 +41,15 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
         }}
       >
         <Pressable
-          onPress={() => navigation.navigate('create-photo/capture')}
+          onPress={() => {
+            // If we're already on the index tab, directly navigate with fresh params
+            const currentRoute = navigation.getState().routes[navigation.getState().index];
+            if (currentRoute.name === 'index') {
+              navigation.navigate('index', { showCreateModal: 'true' });
+            } else {
+              navigation.navigate('create');
+            }
+          }}
           className="w-14 h-14 bg-blue-500 rounded-full items-center justify-center shadow-lg border-4 border-white"
           style={{
             elevation: 8, // Android shadow
@@ -53,7 +61,7 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
           accessibilityLabel="Create new tour"
           accessibilityRole="button"
         >
-          <FontAwesome name="camera" size={24} color="white" />
+          <FontAwesome name="plus" size={24} color="white" />
         </Pressable>
         
         {/* Create label */}
@@ -140,4 +148,4 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
       </View>
     </View>
   );
-} 
+}

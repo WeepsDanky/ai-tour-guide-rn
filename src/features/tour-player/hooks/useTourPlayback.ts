@@ -90,35 +90,42 @@ export function useTourPlayback({ tourId, tourData }: UseTourPlaybackOptions): U
 
   // ----------------- Data loading -----------------
   useEffect(() => {
-    if ((tourId || tourData) && !hasFetchedRef.current) {
-      hasFetchedRef.current = true;
+    if (tourId || tourData) {
+      if (!hasFetchedRef.current) {
+        hasFetchedRef.current = true;
 
-      const loadTour = async () => {
-        setIsLoading(true);
-        setError(null);
-        try {
-          let loadedTour: Tour | null = null;
+        const loadTour = async () => {
+          setIsLoading(true);
+          setError(null);
+          try {
+            let loadedTour: Tour | null = null;
 
-          if (tourData) {
-            loadedTour = JSON.parse(tourData as string);
-          } else if (tourId) {
-            const tour = await getTourById(tourId as string);
-            loadedTour = tour || null;
+            if (tourData) {
+              loadedTour = JSON.parse(tourData as string);
+            } else if (tourId) {
+              const tour = await getTourById(tourId as string);
+              loadedTour = tour || null;
+            }
+
+            if (!loadedTour) {
+              throw new Error('No tour specified or found.');
+            }
+            setTour(loadedTour);
+          } catch (err) {
+            const message = err instanceof Error ? err.message : 'Failed to load tour data';
+            setError(message);
+          } finally {
+            setIsLoading(false);
           }
+        };
 
-          if (!loadedTour) {
-            throw new Error('No tour specified or found.');
-          }
-          setTour(loadedTour);
-        } catch (err) {
-          const message = err instanceof Error ? err.message : 'Failed to load tour data';
-          setError(message);
-        } finally {
-          setIsLoading(false);
-        }
-      };
-
-      loadTour();
+        loadTour();
+      }
+    } else {
+      // No tour specified - empty map mode
+      setIsLoading(false);
+      setTour(null);
+      setError(null);
     }
   }, [tourId, tourData]);
 

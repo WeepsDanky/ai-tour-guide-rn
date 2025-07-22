@@ -82,9 +82,9 @@ export default function TourProgressScreen() {
     // Clear context data after successful generation
     clearPhotoData();
     
-    // Navigate to map screen with the generated tour
-    router.replace({
-      pathname: '/map',
+    // Navigate to map screen with the generated tour in full screen mode
+    router.push({
+      pathname: '/(appLayout)/(map)/map',
       params: { tourData: JSON.stringify(tour) }
     });
   };
