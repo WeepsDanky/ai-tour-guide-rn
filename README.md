@@ -1,7 +1,5 @@
 # AI Tour Guide - React Native App
 
-![Project Banner](https://example.com/your-banner-image.png) <!-- It's a good practice to add a banner or logo -->
-
 An intelligent, AI-powered tour guide application built with React Native and Expo. Discover, create, and experience personalized audio tours on the go.
 
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com)
