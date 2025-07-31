@@ -56,7 +56,7 @@ export default function DiscoverScreen() {
       // If user is not authenticated, reset loading state
       setLoading(false);
     }
-  }, [loadInitialData, isInitialized, authLoading, user]);
+  }, [isInitialized, authLoading, user]); // Removed loadInitialData from dependencies
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
