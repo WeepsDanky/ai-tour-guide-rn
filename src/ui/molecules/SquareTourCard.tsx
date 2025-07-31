@@ -1,10 +1,10 @@
 import React from 'react';
 import { View, Text, Image, Pressable } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
-import { Tour } from '@/types';
+import { Tour, TourSummary } from '@/types';
 
 interface SquareTourCardProps {
-  tour: Tour;
+  tour: TourSummary;
   onPress: () => void;
 }
 
@@ -24,23 +24,16 @@ export function SquareTourCard({ tour, onPress }: SquareTourCardProps) {
       {/* Square Image */}
       <View className="relative aspect-square overflow-hidden">
         <Image 
-          source={{ uri: tour.image }} 
+          source={{ uri: 'https://via.placeholder.com/200x200?text=Tour' }} 
           className="absolute w-full h-full" 
           resizeMode="cover" 
         />
         <View className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
         
-        {/* Duration Badge */}
-        <View className="absolute top-3 right-3 bg-black/70 rounded-full px-2 py-1">
-          <Text className="text-white text-xs font-medium">
-            {tour.duration}m
-          </Text>
-        </View>
-
-        {/* Difficulty Badge */}
-        <View className={`absolute top-3 left-3 rounded-full px-2 py-1 ${difficultyColors[tour.difficulty]}`}>
-          <Text className="text-xs font-medium capitalize">
-            {tour.difficulty}
+        {/* Status Badge */}
+        <View className="absolute top-3 left-3 rounded-full px-2 py-1 bg-blue-100">
+          <Text className="text-xs font-medium text-blue-700">
+            {tour.status}
           </Text>
         </View>
 
@@ -52,11 +45,11 @@ export function SquareTourCard({ tour, onPress }: SquareTourCardProps) {
           <View className="flex-row items-center">
             <FontAwesome name="map-marker" size={12} color="white" />
             <Text className="text-white text-xs ml-1">
-              {tour.pois.length} stops
+              {tour.locationName}
             </Text>
           </View>
         </View>
       </View>
     </Pressable>
   );
-} 
+}

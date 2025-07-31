@@ -54,22 +54,37 @@ export default function ConfirmPhotoScreen() {
   };
 
   const handleUsePhoto = async () => {
+    console.log('[ConfirmPhoto] User confirmed photo, validating data...');
+    console.log('[ConfirmPhoto] Location:', locationLabel);
+    console.log('[ConfirmPhoto] Preferences:', localPreferences);
+    console.log('[ConfirmPhoto] Photo URI:', photoUri);
+    
     if (!locationLabel.trim()) {
+      console.warn('[ConfirmPhoto] Location is missing or empty');
       Alert.alert('Location Required', 'Please ensure location is available to generate your tour.');
+      return;
+    }
+
+    if (!photoUri) {
+      console.warn('[ConfirmPhoto] Photo URI is missing');
+      Alert.alert('Photo Required', 'Please capture or select a photo to generate your tour.');
       return;
     }
 
     try {
       setLoading(true);
+      console.log('[ConfirmPhoto] Starting tour generation process...');
       
       // Save preferences to context
       setPreferencesText(localPreferences);
+      console.log('[ConfirmPhoto] Preferences saved to context');
       
       // Navigate to progress screen
+      console.log('[ConfirmPhoto] Navigating to progress screen');
       router.push('/create-photo/progress');
     } catch (error) {
       setLoading(false);
-      console.error('Failed to start tour generation:', error);
+      console.error('[ConfirmPhoto] Failed to start tour generation:', error);
       Alert.alert('Error', 'Failed to start tour generation. Please try again.');
     }
   };
@@ -162,4 +177,4 @@ export default function ConfirmPhotoScreen() {
       </ImageBackground>
     </View>
   );
-} 
+}

@@ -37,24 +37,33 @@ export default function CapturePhotoScreen() {
   }, [locationPermission, locationFetched]);
 
   const requestLocationPermission = async () => {
+    console.log('[CapturePhoto] Requesting location permission...');
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
+      console.log('[CapturePhoto] Location permission status:', status);
       setLocationPermission(status === 'granted');
     } catch (error) {
-      console.error('Failed to request location permission:', error);
+      console.error('[CapturePhoto] Failed to request location permission:', error);
       setLocationPermission(false);
     }
   };
 
   const getCurrentLocation = async () => {
-    if (!locationPermission || locationFetched) return;
+    if (!locationPermission || locationFetched) {
+      console.log('[CapturePhoto] Skipping location fetch - permission:', locationPermission, 'fetched:', locationFetched);
+      return;
+    }
 
+    console.log('[CapturePhoto] Getting current location...');
     try {
       setLocationFetched(true);
       const location = await Location.getCurrentPositionAsync({});
       const { latitude, longitude } = location.coords;
+      console.log('[CapturePhoto] Location coordinates:', latitude, longitude);
       
       const addresses = await Location.reverseGeocodeAsync({ latitude, longitude });
+      console.log('[CapturePhoto] Reverse geocode results:', addresses);
+      
       if (addresses.length > 0) {
         const address = addresses[0];
         const formattedAddress = [
@@ -64,25 +73,36 @@ export default function CapturePhotoScreen() {
           address.region
         ].filter(Boolean).join(', ') || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
         
+        console.log('[CapturePhoto] Formatted address:', formattedAddress);
         setLocationLabel(formattedAddress);
+      } else {
+        console.warn('[CapturePhoto] No addresses found for coordinates');
+        setLocationLabel(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
       }
     } catch (error) {
-      console.error('Failed to get location:', error);
+      console.error('[CapturePhoto] Failed to get location:', error);
       setLocationLabel('Location unavailable');
     }
   };
 
   const handleClose = () => {
+    console.log('[CapturePhoto] User closed camera screen');
     router.dismiss();
   };
 
   const handleFlipCamera = () => {
-    setCameraType(prev => prev === 'back' ? 'front' : 'back');
+    const newType = cameraType === 'back' ? 'front' : 'back';
+    console.log('[CapturePhoto] Flipping camera from', cameraType, 'to', newType);
+    setCameraType(newType);
   };
 
   const handleTakePhoto = async () => {
-    if (!cameraRef.current || isCapturing) return;
+    if (!cameraRef.current || isCapturing) {
+      console.log('[CapturePhoto] Cannot take photo - camera ref:', !!cameraRef.current, 'capturing:', isCapturing);
+      return;
+    }
 
+    console.log('[CapturePhoto] Taking photo...');
     try {
       setIsCapturing(true);
       
@@ -91,12 +111,17 @@ export default function CapturePhotoScreen() {
         base64: false,
       });
 
+      console.log('[CapturePhoto] Photo captured:', photo?.uri);
       if (photo?.uri) {
         setPhotoUri(photo.uri);
+        console.log('[CapturePhoto] Navigating to confirm screen');
         router.push('/create-photo/confirm');
+      } else {
+        console.warn('[CapturePhoto] Photo capture returned no URI');
+        Alert.alert('Error', 'Failed to capture photo. Please try again.');
       }
     } catch (error) {
-      console.error('Failed to take photo:', error);
+      console.error('[CapturePhoto] Failed to take photo:', error);
       Alert.alert('Error', 'Failed to capture photo. Please try again.');
     } finally {
       setIsCapturing(false);
@@ -104,6 +129,7 @@ export default function CapturePhotoScreen() {
   };
 
   const handleChooseFromLibrary = async () => {
+    console.log('[CapturePhoto] Opening image library...');
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
@@ -112,12 +138,17 @@ export default function CapturePhotoScreen() {
         quality: 0.8,
       });
 
+      console.log('[CapturePhoto] Image picker result:', result);
       if (!result.canceled && result.assets[0]) {
+        console.log('[CapturePhoto] Photo selected:', result.assets[0].uri);
         setPhotoUri(result.assets[0].uri);
+        console.log('[CapturePhoto] Navigating to confirm screen');
         router.push('/create-photo/confirm');
+      } else {
+        console.log('[CapturePhoto] User cancelled image selection');
       }
     } catch (error) {
-      console.error('Failed to select photo:', error);
+      console.error('[CapturePhoto] Failed to select photo:', error);
       Alert.alert('Error', 'Failed to select photo. Please try again.');
     }
   };
@@ -281,4 +312,4 @@ export default function CapturePhotoScreen() {
       </View>
     </View>
   );
-} 
+}

@@ -6,6 +6,7 @@ import { FontAwesome } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { getCaptcha, sendCode, register, login } from '@/services/auth.service';
 import { CaptchaResponse } from '@/types/auth';
+import { APIResponse } from '@/types';
 
 type AuthStep = 'login' | 'captcha' | 'emailCode' | 'register';
 

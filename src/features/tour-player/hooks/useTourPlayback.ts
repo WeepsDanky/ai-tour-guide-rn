@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useRouter } from 'expo-router';
 import * as Location from 'expo-location';
 import { Tour, POI } from '@/types';
-import { getTourById } from '@/services/tour.service';
+import { getTourByUid } from '@/services/tour.service';
 
 interface UseTourPlaybackOptions {
   tourId?: string;
@@ -103,7 +103,7 @@ export function useTourPlayback({ tourId, tourData }: UseTourPlaybackOptions): U
             if (tourData) {
               loadedTour = JSON.parse(tourData as string);
             } else if (tourId) {
-              const tour = await getTourById(tourId as string);
+              const tour = await getTourByUid(tourId as string);
               loadedTour = tour || null;
             }
 

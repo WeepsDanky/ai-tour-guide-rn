@@ -14,6 +14,8 @@ export interface APIResponse<T = any> {
   message?: string;
   /** Whether the request was successful */
   success: boolean;
+  /** Business logic response code */
+  code?: string;
 }
 
 /**

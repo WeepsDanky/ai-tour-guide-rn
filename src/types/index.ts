@@ -52,7 +52,7 @@ export interface Tour {
 }
 
 /**
- * Tour creation request
+ * Tour creation request (frontend format)
  */
 export interface TourRequest {
   location: string;
@@ -61,15 +61,192 @@ export interface TourRequest {
 }
 
 /**
+ * Generate tour request (backend format)
+ */
+export interface GenerateTourRequest {
+  locationName: string;
+  prefText: string;
+  language: string;
+  photoUrls: string[];
+}
+
+/**
+ * Tour generation status response
+ */
+export interface TourGenerationStatusResponse {
+  tourUid: string;
+  workflowRunId: string;
+}
+
+/**
  * Tour generation task status
  */
 export interface TourGenerationTask {
-  taskId: string;
-  phase: 'initializing' | 'research' | 'planning' | 'generating' | 'audio_generation' | 'audio_ready' | 'error';
+  tourUid: string;
+  workflowRunId: string;
+  status: 'PENDING' | 'GENERATING' | 'COMPLETED' | 'FAILED';
   progress: number;
   message: string;
-  payload?: Tour;
+  tourData?: any; // The generated tour data when completed
   error?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Tour summary for listing
+ */
+export interface TourSummary {
+  uid: string;
+  title: string;
+  description: string;
+  locationName: string;
+  status: 'PENDING' | 'GENERATING' | 'COMPLETED' | 'FAILED';
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Paginated response wrapper
+ */
+export interface PaginatedResponse<T> {
+  content: T[];
+  totalElements: number;
+  totalPages: number;
+  size: number;
+  number: number;
+  first: boolean;
+  last: boolean;
+}
+
+/**
+ * Standard backend response wrapper
+ */
+export interface R<T = any> {
+  success: boolean;
+  data?: T;
+  message?: string;
+  code?: number;
+}
+
+// =============================================================================
+// TRAVELOGUE TYPES
+// =============================================================================
+
+/**
+ * Create travelogue request
+ */
+export interface CreateTravelogueRequest {
+  tourUid: string;
+  title?: string;
+  summary?: string;
+  isPublic?: boolean;
+}
+
+/**
+ * Update travelogue request
+ */
+export interface UpdateTravelogueRequest {
+  title?: string;
+  summary?: string;
+  isPublic?: boolean;
+}
+
+/**
+ * Travelogue response
+ */
+export interface TravelogueResponse {
+  uid: string;
+  title: string;
+  summary?: string;
+  tourUid: string;
+  userId: string;
+  isPublic: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Travelogue summary for listing
+ */
+export interface TravelogueSummary {
+  uid: string;
+  title: string;
+  summary?: string;
+  tourUid: string;
+  userId: string;
+  userName?: string;
+  isPublic: boolean;
+  createdAt: string;
+  updatedAt: string;
+  thumbnailUrl?: string;
+}
+
+/**
+ * POI photo
+ */
+export interface PoiPhoto {
+  id: string;
+  photoUrl: string;
+  caption?: string;
+  uploadedAt: string;
+}
+
+/**
+ * Travelogue POI with user data
+ */
+export interface TraveloguePoi {
+  poiIdInTour: string; // e.g., "poi_1"
+  note?: string;
+  rating?: number; // 1-5 stars
+  photos: PoiPhoto[];
+}
+
+/**
+ * Complete travelogue detail
+ */
+export interface TravelogueDetail {
+  uid: string;
+  title: string;
+  summary?: string;
+  tourUid: string;
+  userId: string;
+  userName?: string;
+  isPublic: boolean;
+  createdAt: string;
+  updatedAt: string;
+  
+  // Original tour data merged with user customizations
+  tourData: any; // The original tour JSON data
+  pois: TraveloguePoi[]; // User's POI customizations
+}
+
+/**
+ * Add POI photo request
+ */
+export interface AddPoiPhotoRequest {
+  travelogueUid: string;
+  poiIdInTour: string;
+  photoUrl: string;
+  caption?: string;
+}
+
+/**
+ * POI photo response
+ */
+export interface PoiPhotoResponse {
+  id: string;
+  photoUrl: string;
+  caption?: string;
+  uploadedAt: string;
+}
+
+/**
+ * Update travelogue POI request
+ */
+export interface UpdateTraveloguePoiRequest {
+  note?: string;
+  rating?: number;
 }
 
 // =============================================================================
@@ -151,6 +328,7 @@ export interface APIResponse<T = any> {
   error?: string;
   message?: string;
   success: boolean;
+  code?: string;
 }
 
 /**

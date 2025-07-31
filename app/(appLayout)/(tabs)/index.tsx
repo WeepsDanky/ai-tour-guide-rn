@@ -4,13 +4,13 @@ import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { SearchBar } from '@/features/tour-player/components/SearchBar';
 import { NearbyToursSection } from '@/features/home/components/NearbyToursSection';
 import { EmptyState } from '@/ui/molecules/EmptyState';
-import { Tour } from '@/types';
-import { getAllTours } from '@/services/tour.service';
+import { Tour, TourSummary } from '@/types';
+import { getMyTours } from '@/services/tour.service';
 import { CreateTourModal } from '@/features/create-tour';
 import { useAuth } from '@/context/AuthContext';
 
 export default function DiscoverScreen() {
-  const [tours, setTours] = useState<Tour[]>([]);
+  const [tours, setTours] = useState<TourSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [userLocation, setUserLocation] = useState<string>('');
@@ -34,8 +34,8 @@ export default function DiscoverScreen() {
     try {
       setLoading(true);
       
-      const fetchedTours = await getAllTours();
-      setTours(fetchedTours);
+      const paginatedResponse = await getMyTours();
+      setTours(paginatedResponse.content || []);
       
       // TODO: Get user's actual location
       setUserLocation('New York, NY');
@@ -64,10 +64,10 @@ export default function DiscoverScreen() {
     setRefreshing(false);
   }, [loadInitialData]);
 
-  const handleTourPress = useCallback((tour: Tour) => {
+  const handleTourPress = useCallback((tour: TourSummary) => {
     router.push({
       pathname: '/map',
-      params: { tourId: tour.id }
+      params: { tourId: tour.uid }
     });
   }, [router]);
 

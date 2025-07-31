@@ -35,7 +35,7 @@ export const useAudioPlayer = (
     }
 
     // Find the closest POI with audio that's within proximity threshold
-    const poisWithAudio = nearbyPOIs.filter(poi => poi.audio_url);
+    const poisWithAudio: POI[] = nearbyPOIs.filter((poi: POI) => poi.audio_url);
     if (!poisWithAudio.length) {
       nearestPOI.current = null;
       return;
@@ -44,7 +44,7 @@ export const useAudioPlayer = (
     let closest: POI | null = null;
     let closestDistance = Infinity;
 
-    poisWithAudio.forEach(poi => {
+    poisWithAudio.forEach((poi: POI) => {
       const distance = calculateDistance(currentLocation, poi.coord);
       if (distance <= PROXIMITY_THRESHOLD && distance < closestDistance) {
         closest = poi;
@@ -55,11 +55,13 @@ export const useAudioPlayer = (
     nearestPOI.current = closest;
 
     // Auto-switch to nearest POI if it's different from current
-    if (closest && (!currentPOI || closest.id !== currentPOI.id)) {
+    if (closest && (!currentPOI || (closest as POI).id !== currentPOI.id)) {
       setCurrentPOI(closest);
     } else if (!closest && currentPOI) {
       // Move away from POI, pause but don't clear (allow manual resumption)
-      player.pause();
+      if (player && playerStatus?.isLoaded) {
+        player.pause();
+      }
     }
   }, [currentLocation, nearbyPOIs, currentPOI?.id, player]);
 
@@ -121,4 +123,4 @@ export const useAudioPlayer = (
     togglePlayPause,
     nearestPOI: nearestPOI.current,
   };
-}; 
+};

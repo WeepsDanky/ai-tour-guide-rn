@@ -1,14 +1,14 @@
 import React from 'react';
 import { View, Text, Pressable, FlatList, ScrollView } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
-import { Tour } from '@/types';
+import { Tour, TourSummary } from '@/types';
 import { SquareTourCard } from '@/ui/molecules';
 import { EmptyState } from '@/ui/molecules/EmptyState';
 
 interface NearbyToursSectionProps {
-  tours: Tour[];
+  tours: TourSummary[];
   loading?: boolean;
-  onTourPress: (tour: Tour) => void;
+  onTourPress: (tour: TourSummary) => void;
   onSeeAll?: () => void;
   userLocation?: string;
 }
@@ -105,7 +105,7 @@ export function NearbyToursSection({
             onPress={() => onTourPress(item)}
           />
         )}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => item.uid}
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ paddingHorizontal: 16 }}

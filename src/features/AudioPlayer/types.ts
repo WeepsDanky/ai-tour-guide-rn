@@ -1,4 +1,4 @@
-import { POI } from '~/types';
+import { POI } from '@/types';
 
 export interface AudioPlayerStatus {
   isPlaying: boolean;
@@ -27,4 +27,4 @@ export interface ProximityAudioPlayerProps {
   poi: POI | null;
   isNearPOI: boolean;
   onClose: () => void;
-} 
+}
