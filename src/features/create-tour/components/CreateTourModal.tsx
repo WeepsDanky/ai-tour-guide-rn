@@ -139,6 +139,7 @@ export function CreateTourModal({ isVisible, onClose }: CreateTourModalProps) {
             left: 0,
             right: 0,
             paddingBottom: insets.bottom,
+            minHeight: '50%',
           },
           animatedContainerStyle,
         ]}
