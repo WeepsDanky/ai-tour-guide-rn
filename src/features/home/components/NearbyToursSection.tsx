@@ -25,7 +25,7 @@ export function NearbyToursSection({
       <View className="mb-8">
         <View className="flex-row items-center justify-between px-4 mb-4">
           <Text className="text-xl font-bold text-gray-900">
-            Nearby Tours
+            附近的旅游
           </Text>
         </View>
         
@@ -50,18 +50,18 @@ export function NearbyToursSection({
     return (
       <View className="mb-8 px-4">
         <Text className="text-xl font-bold text-gray-900 mb-4">
-          Nearby Tours
+          附近的旅游
         </Text>
         
         <View className="bg-gray-50 rounded-xl p-6">
           <EmptyState
             icon="map-marker"
-            title="No nearby tours found"
+            title="附近没有旅游"
             description={userLocation 
-              ? `We couldn't find any tours near ${userLocation}. Try exploring other areas or create your own tour!`
-              : "Enable location access to discover tours near you, or browse our recommended tours below."
+              ? `我们没有找到任何在${userLocation}附近的旅游。尝试探索其他区域或创建您自己的旅游！`
+              : "允许位置访问以发现您附近的旅游，或浏览我们推荐的旅游。"
             }
-            actionText="Explore All Tours"
+            actionText="探索所有旅游"
             onAction={onSeeAll}
           />
         </View>
@@ -79,11 +79,11 @@ export function NearbyToursSection({
           </View>
           <View>
             <Text className="text-xl font-bold text-gray-900">
-              Nearby Tours
+              附近的旅游
             </Text>
             {userLocation && (
               <Text className="text-sm text-gray-600">
-                Tours near {userLocation}
+                {userLocation}附近的旅游
               </Text>
             )}
           </View>
@@ -91,7 +91,7 @@ export function NearbyToursSection({
         
         {onSeeAll && tours.length > 6 && (
           <Pressable onPress={onSeeAll} className="bg-blue-50 px-3 py-2 rounded-full">
-            <Text className="text-blue-600 font-medium text-sm">See All</Text>
+            <Text className="text-blue-600 font-medium text-sm">探索所有旅游</Text>
           </Pressable>
         )}
       </View>

@@ -81,10 +81,9 @@ export default function DiscoverScreen() {
       />
       
       {/* App Header */}
-      <View className="bg-white border-b border-gray-100 pt-12">
-        <View className="px-4 pt-2 pb-4">
-          <Text className="text-2xl font-bold text-gray-900">发现</Text>
-          <Text className="text-sm text-gray-600 mt-1">Discover amazing tours and experiences</Text>
+      <View className="bg-white border-gray-100 pt-12">
+        <View className="px-4 pt-4 pb-2">
+          <Text className="text-2xl font-bold text-gray-900 text-center">发现</Text>
         </View>
       </View>
 

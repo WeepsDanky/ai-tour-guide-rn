@@ -25,68 +25,70 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
     }
   };
 
+  /**
+   * Get appropriate label for each tab route
+   */
+  const getTabLabel = (routeName: string): string => {
+    switch (routeName) {
+      case 'index':
+        return '发现';
+      case 'profile':
+        return '我的';
+      case 'create':
+        return '创建';
+      default:
+        return routeName;
+    }
+  };
+
   return (
     <View
       style={{
         paddingBottom: insets.bottom,
       }}
-      className="relative bg-white border-t border-gray-200"
+      className="relative bg-white"
     >
-      {/* Central Create Button - Elevated */}
-      <View 
-        className="absolute -top-6 z-10"
-        style={{
-          left: '50%',
-          marginLeft: -28, // Half of button width (56/2)
-        }}
-      >
-        <Pressable
-          onPress={() => {
-            // If we're already on the index tab, directly navigate with fresh params
-            const currentRoute = navigation.getState().routes[navigation.getState().index];
-            if (currentRoute.name === 'index') {
-              navigation.navigate('index', { showCreateModal: 'true' });
-            } else {
-              navigation.navigate('create');
-            }
-          }}
-          className="w-14 h-14 bg-blue-500 rounded-full items-center justify-center shadow-lg border-4 border-white"
-          style={{
-            elevation: 8, // Android shadow
-            shadowColor: '#000', // iOS shadow
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.15,
-            shadowRadius: 8,
-          }}
-          accessibilityLabel="Create new tour"
-          accessibilityRole="button"
-        >
-          <FontAwesome name="plus" size={24} color="white" />
-        </Pressable>
-        
-        {/* Create label */}
-        <Text className="text-xs font-medium text-blue-500 text-center mt-1">
-          Create
-        </Text>
-      </View>
 
       {/* Tab Bar Content */}
-      <View className="flex-row items-center h-16 px-4">
+      <View className="flex-row items-center h-16 px-6">
         {state.routes.map((route, index) => {
           const { options } = descriptors[route.key];
-          const label =
-            options.tabBarLabel !== undefined
-              ? options.tabBarLabel
-              : options.title !== undefined
-              ? options.title
-              : route.name;
+          const label = getTabLabel(route.name);
 
           const isFocused = state.index === index;
           const isCreateTab = route.name === 'create';
 
-          // Hide the create tab since we have the floating button
+          // Handle create tab with square button design
           if (isCreateTab) {
-            return <View key={route.key} className="flex-1" />;
+            return (
+              <Pressable
+                key={route.key}
+                onPress={() => {
+                  // If we're already on the index tab, directly navigate with fresh params
+                  const currentRoute = navigation.getState().routes[navigation.getState().index];
+                  if (currentRoute.name === 'index') {
+                    navigation.navigate('index', { showCreateModal: 'true' });
+                  } else {
+                    navigation.navigate('create');
+                  }
+                }}
+                accessibilityLabel="Create new tour"
+                accessibilityRole="button"
+                className="flex-1 items-center justify-center py-2"
+              >
+                <View className="items-center">
+                  {/* Square Create Button */}
+                  <View className="w-10 h-8 bg-blue-500 rounded-lg items-center justify-center">
+                    <FontAwesome name="plus" size={18} color="white" />
+                  </View>
+                  
+                  {/* Label */}
+                  <Text className="text-xs font-medium mt-1 text-blue-500">
+                    创建
+                  </Text>
+                </View>
+              </Pressable>
+            );
           }
 
           const onPress = () => {
@@ -120,27 +122,20 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
             >
               <View className="items-center">
                 {/* Icon */}
-                <View
-                  className={isFocused ? 'w-8 h-8 items-center justify-center rounded-full bg-blue-100' : 'w-8 h-8 items-center justify-center rounded-full bg-transparent'}
-                >
+                <View className="items-center justify-center">
                   <FontAwesome
                     name={getTabIcon(route.name)}
-                    size={20}
-                    color={isFocused ? '#3B82F6' : '#6B7280'}
+                    size={26}
+                    color={isFocused ? '#3B82F6' : '#9CA3AF'}
                   />
                 </View>
                 
                 {/* Label */}
                 <Text
-                  className={isFocused ? 'text-xs font-medium mt-1 text-blue-500' : 'text-xs font-medium mt-1 text-gray-500'}
+                  className={isFocused ? 'text-xs font-semibold mt-1 text-blue-500' : 'text-xs font-medium mt-1 text-gray-400'}
                 >
-                  {label as string}
+                  {label}
                 </Text>
-                
-                {/* Active indicator */}
-                {isFocused && (
-                  <View className="w-1 h-1 bg-blue-500 rounded-full mt-1" />
-                )}
               </View>
             </Pressable>
           );

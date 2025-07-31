@@ -11,22 +11,22 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Discover',
-          tabBarLabel: 'Discover',
+          title: '发现',
+          tabBarLabel: '发现',
         }}
       />
       <Tabs.Screen
         name="create"
         options={{
-          title: 'Create',
-          tabBarLabel: 'Create',
+          title: '创建',
+          tabBarLabel: '创建',
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Profile',
-          tabBarLabel: 'Profile',
+          title: '我的',
+          tabBarLabel: '我的',
         }}
       />
     </Tabs>
