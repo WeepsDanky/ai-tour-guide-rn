@@ -46,7 +46,7 @@ export function NearbyToursSection({
     );
   }
 
-  if (tours.length === 0) {
+  if (!Array.isArray(tours) || tours.length === 0) {
     return (
       <View className="mb-8 px-4">
         <Text className="text-xl font-bold text-gray-900 mb-4">
@@ -89,7 +89,7 @@ export function NearbyToursSection({
           </View>
         </View>
         
-        {onSeeAll && tours.length > 6 && (
+        {onSeeAll && Array.isArray(tours) && tours.length > 6 && (
           <Pressable onPress={onSeeAll} className="bg-blue-50 px-3 py-2 rounded-full">
             <Text className="text-blue-600 font-medium text-sm">探索所有旅游</Text>
           </Pressable>
@@ -113,4 +113,4 @@ export function NearbyToursSection({
       />
     </View>
   );
-} 
+}

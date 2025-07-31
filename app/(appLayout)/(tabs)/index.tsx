@@ -7,6 +7,7 @@ import { EmptyState } from '@/ui/molecules/EmptyState';
 import { Tour } from '@/types';
 import { getAllTours } from '@/services/tour.service';
 import { CreateTourModal } from '@/features/create-tour';
+import { useAuth } from '@/context/AuthContext';
 
 export default function DiscoverScreen() {
   const [tours, setTours] = useState<Tour[]>([]);
@@ -16,6 +17,7 @@ export default function DiscoverScreen() {
   
   const router = useRouter();
   const params = useLocalSearchParams();
+  const { user, isLoading: authLoading } = useAuth();
 
   const [isCreateModalVisible, setCreateModalVisible] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -46,11 +48,15 @@ export default function DiscoverScreen() {
   }, []);
 
   useEffect(() => {
-    if (!isInitialized) {
+    // Only load data if user is authenticated and auth is not loading
+    if (!authLoading && user && !isInitialized) {
       loadInitialData();
       setIsInitialized(true);
+    } else if (!authLoading && !user) {
+      // If user is not authenticated, reset loading state
+      setLoading(false);
     }
-  }, [isInitialized, loadInitialData]);
+  }, [loadInitialData, isInitialized, authLoading, user]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -69,7 +75,9 @@ export default function DiscoverScreen() {
     setCreateModalVisible(true);
   }, []);
   
-  const nearbyTours = useMemo(() => tours.slice(0, 5), [tours]); 
+  const nearbyTours = useMemo(() => {
+    return Array.isArray(tours) ? tours.slice(0, 5) : [];
+  }, [tours]); 
 
   return (
     <View className="flex-1 bg-gray-50">
@@ -121,7 +129,7 @@ export default function DiscoverScreen() {
                 userLocation={userLocation}
               />
             </View>
-          ) : tours.length === 0 ? (
+          ) : !Array.isArray(tours) || tours.length === 0 ? (
             // Empty State - No tours available
             <View className="flex-1 pt-20 px-4">
               <EmptyState

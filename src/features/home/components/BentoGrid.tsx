@@ -10,7 +10,7 @@ interface BentoGridProps {
 }
 
 export function BentoGrid({ tours, onTourPress, pattern = 'default' }: BentoGridProps) {
-  if (tours.length === 0) return null;
+  if (!Array.isArray(tours) || tours.length === 0) return null;
 
   const renderPattern = () => {
     switch (pattern) {
@@ -173,4 +173,4 @@ export function BentoGrid({ tours, onTourPress, pattern = 'default' }: BentoGrid
   };
 
   return <View className="px-4">{renderPattern()}</View>;
-} 
+}

@@ -129,9 +129,15 @@ export const postData = async <T = any>(
       };
     }
     
+    // 如果服务器返回的已经包含code字段（业务逻辑响应），直接返回
+    if (result.hasOwnProperty('code') || (result.hasOwnProperty('success') && result.hasOwnProperty('data'))) {
+      return result;
+    }
+    
+    // 否则包装成标准格式
     return {
       success: true,
-      data: result.data || result,
+      data: result,
       message: result.message,
     };
   } catch (error) {
@@ -164,4 +170,4 @@ export const pollTaskProgress = async (
   }
   
   return response.json();
-}; 
+};

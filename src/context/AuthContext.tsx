@@ -1,14 +1,14 @@
 import React, { createContext, useState, useEffect, ReactNode, useContext } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import { AuthUser, LogInUserResponse } from '@/types/auth'; 
-import { login as apiLogin } from '@/services/auth.service';
+import { login as apiLogin, logout as apiLogout } from '@/services/auth.service';
 
 const TOKEN_KEY = 'auth-token';
 const USER_KEY = 'user-data'; 
 
 interface AuthContextType {
-  signIn: (username: string, password: string) => Promise<LogInUserResponse | undefined>;
-  signOut: () => void;
+  signIn: (email: string, password: string) => Promise<LogInUserResponse | undefined>;
+  signOut: () => Promise<void>;
   user: AuthUser | null;
   token: string | null;
   isLoading: boolean;
@@ -58,18 +58,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loadUserSession();
   }, []);
 
-  const signIn = async (username: string, password:string) => {
+  const signIn = async (email: string, password: string) => {
     try {
-      const response = await apiLogin(username, password);
+      const response = await apiLogin(email, password);
       if (response && response.success && response.data) {
         const { accessToken } = response.data;
         const userData = response.data;
 
-        setToken(accessToken);
+        // Ensure accessToken is a string
+        const tokenString = String(accessToken || '');
+        
+        setToken(tokenString);
         setUser(userData);
         
         // Securely store both the token and user data
-        await SecureStore.setItemAsync(TOKEN_KEY, accessToken);
+        await SecureStore.setItemAsync(TOKEN_KEY, tokenString);
         await SecureStore.setItemAsync(USER_KEY, JSON.stringify(userData));
         
         return userData;
@@ -81,6 +84,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    try {
+      // Call logout API
+      await apiLogout();
+    } catch (e) {
+      console.error('Logout API failed', e);
+      // Continue with local logout even if API fails
+    }
+    
     setUser(null);
     setToken(null);
     
