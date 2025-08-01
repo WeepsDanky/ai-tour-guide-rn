@@ -19,16 +19,20 @@ export async function getMyTours(): Promise<PaginatedResponse<TourSummary>> {
         response.data.tourUids.map(async (uid) => {
           try {
             const tourDetail = await getTourByUid(uid);
-            return {
-              uid,
-              title: tourDetail.title || 'Untitled Tour',
-              description: tourDetail.description || 'No description available',
-              locationName: 'Unknown', // This might need to be extracted from tour data
-              status: 'COMPLETED' as const,
-              coverImageUrl: tourDetail.coverImageUrl,
-              createdAt: tourDetail.created_at,
-              updatedAt: tourDetail.updated_at
-            };
+            if (tourDetail) {
+              return {
+                uid,
+                title: tourDetail.title || 'Untitled Tour',
+                description: tourDetail.description || 'No description available',
+                locationName: 'Unknown', // This might need to be extracted from tour data
+                status: 'COMPLETED' as const,
+                coverImageUrl: tourDetail.coverImageUrl,
+                createdAt: tourDetail.created_at || new Date().toISOString(),
+                updatedAt: tourDetail.updated_at || new Date().toISOString()
+              };
+            } else {
+              throw new Error('Failed to fetch tour details');
+            }
           } catch (error) {
             console.error('[TourService] Failed to fetch tour details for uid', uid, ':', error);
             return {
@@ -66,41 +70,20 @@ export async function getMyTours(): Promise<PaginatedResponse<TourSummary>> {
 /**
  * Fetches a single tour by its UID from the backend.
  * @param tourUid - The UID of the tour to fetch.
- * @returns A promise that resolves to a single tour.
+ * @returns A promise that resolves to the full tour data response from the backend.
  */
-export async function getTourByUid(tourUid: string): Promise<Tour> {
-  console.log('[TourService] Fetching tour by UID:', tourUid);
+export async function getTourByUid(tourUid: string): Promise<TourDataResponse | null> {
+  console.log('[TourService] Fetching full tour data by UID:', tourUid);
   try {
     const response = await fetcher<R<TourDataResponse>>(`/tour/${tourUid}`);
     if (response.success && response.data) {
-      // Parse the tour plan JSON string
-      let tourPlan;
-      try {
-        tourPlan = JSON.parse(response.data.tourPlan);
-      } catch (parseError) {
-        console.error('[TourService] Failed to parse tour plan:', parseError);
-        tourPlan = { segments: [], ordered_pois: [], total_distance_m: 0, total_duration_min: 0 };
-      }
-      
-      // Convert TourDataResponse to Tour format
-       const tour: Tour = {
-         id: response.data.tourUid,
-         title: response.data.title || 'Generated Tour', // Use title from response or default
-         description: response.data.description || `A tour with ${tourPlan.ordered_pois?.length || 0} points of interest`,
-         coverImageUrl: response.data.coverImageUrl, // Use cover image URL from response
-         duration: tourPlan.total_duration_min || 0,
-         pois: [], // Will need to be populated separately if needed
-         route: [], // Will need to be populated from segments if needed
-         created_at: new Date().toISOString(),
-         updated_at: new Date().toISOString()
-       };
-      
-      return tour;
+      console.log('[TourService] Full tour data fetched successfully:', response.data);
+      return response.data;
     }
-    throw new Error(response.message || 'Failed to fetch tour');
+    throw new Error(response.message || 'Failed to fetch tour data');
   } catch (error) {
-    console.error('[TourService] Failed to fetch tour:', error);
-    throw error;
+    console.error('[TourService] Failed to fetch full tour data:', error);
+    return null;
   }
 }
 
@@ -117,26 +100,35 @@ export async function createTour(request: TourRequest): Promise<TourGenerationSt
     const generateRequest: GenerateTourRequest = {
       locationName: request.location,
       prefText: request.preferences || '',
-      language: 'zh-CN', // Default to Chinese, could be made configurable
+      language: 'zh', // Default to Chinese, could be made configurable
       photoUrls: request.photos || []
     };
     
     console.log('[TourService] Sending generate request:', generateRequest);
     
-    const response = await postData<R<TourGenerationStatusResponse>>('/tour/generate', generateRequest);
+    // 后端返回的结构是 R<TourGenerationStatusResponse>
+    // postData 会将其包装为 APIResponse<R<TourGenerationStatusResponse>>
+    // 但根据 fetcher.ts 的逻辑，它会解开一层，所以 response.data 就是 R<TourGenerationStatusResponse> 的 data 部分
+    const response = await postData<TourGenerationStatusResponse>('/tour/generate', generateRequest);
     console.log('[TourService] Generate response received:', response);
     
-    if (response.success && response.data?.data) {
-      console.log('[TourService] Tour generation started successfully:', response.data.data);
-      return response.data.data;
+    // 正确的判断逻辑：检查外层 postData 的 success 标志和内层后端返回的数据
+    if (response.success && response.data) {
+      console.log('[TourService] Tour generation started successfully:', response.data);
+      return response.data; // 直接返回 data 对象
     }
     
-    const errorMsg = response.error || response.data?.message || 'Failed to start tour generation';
+    // 如果失败，构造错误信息
+    const errorMsg = response.error || response.message || 'Failed to start tour generation';
     console.error('[TourService] Tour generation failed:', errorMsg);
     throw new Error(errorMsg);
   } catch (error) {
     console.error('[TourService] Tour generation error:', error);
-    throw error;
+    // 确保抛出的是 Error 对象
+    if (error instanceof Error) {
+        throw error;
+    }
+    throw new Error(String(error));
   }
 }
 

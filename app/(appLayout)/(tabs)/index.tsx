@@ -4,13 +4,13 @@ import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { SearchBar } from '@/features/tour-player/components/SearchBar';
 import { NearbyToursSection } from '@/features/home/components/NearbyToursSection';
 import { EmptyState } from '@/ui/molecules/EmptyState';
-import { Tour, TourSummary } from '@/types';
-import { getMyTours } from '@/services/tour.service';
+import { TravelogueSummary } from '@/types';
+import { getMyTravelogues } from '@/services/travelogue.service';
 import { CreateTourModal } from '@/features/create-tour';
 import { useAuth } from '@/context/AuthContext';
 
 export default function DiscoverScreen() {
-  const [tours, setTours] = useState<TourSummary[]>([]);
+  const [travelogues, setTravelogues] = useState<TravelogueSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [userLocation, setUserLocation] = useState<string>('');
@@ -34,8 +34,8 @@ export default function DiscoverScreen() {
     try {
       setLoading(true);
       
-      const paginatedResponse = await getMyTours();
-      setTours(paginatedResponse.content || []);
+      const paginatedResponse = await getMyTravelogues();
+      setTravelogues(paginatedResponse.content || []);
       
       // TODO: Get user's actual location
       setUserLocation('New York, NY');
@@ -64,10 +64,10 @@ export default function DiscoverScreen() {
     setRefreshing(false);
   }, [loadInitialData]);
 
-  const handleTourPress = useCallback((tour: TourSummary) => {
+  const handleTraveloguePress = useCallback((travelogue: TravelogueSummary) => {
     router.push({
       pathname: '/map',
-      params: { tourId: tour.uid }
+      params: { travelogueId: travelogue.uid }
     });
   }, [router]);
 
@@ -75,9 +75,9 @@ export default function DiscoverScreen() {
     setCreateModalVisible(true);
   }, []);
   
-  const nearbyTours = useMemo(() => {
-    return Array.isArray(tours) ? tours.slice(0, 5) : [];
-  }, [tours]); 
+  const nearbyTravelogues = useMemo(() => {
+    return Array.isArray(travelogues) ? travelogues.slice(0, 5) : [];
+  }, [travelogues]); 
 
   return (
     <View className="flex-1 bg-gray-50">
@@ -123,19 +123,19 @@ export default function DiscoverScreen() {
             // Loading State
             <View className="pt-4">
               <NearbyToursSection
-                tours={[]}
+                travelogues={[]}
                 loading={true}
-                onTourPress={handleTourPress}
+                onTraveloguePress={handleTraveloguePress}
                 userLocation={userLocation}
               />
             </View>
-          ) : !Array.isArray(tours) || tours.length === 0 ? (
-            // Empty State - No tours available
+          ) : !Array.isArray(travelogues) || travelogues.length === 0 ? (
+            // Empty State - No travelogues available
             <View className="flex-1 pt-20 px-4">
               <EmptyState
                 icon="compass"
-                title="No Tours Available"
-                description="It looks like there are no tours available right now. Check back later or create your own!"
+                title="No Travelogues Available"
+                description="It looks like there are no travelogues available right now. Check back later or create your own!"
                 actionText="Create Your First Tour"
                 onAction={handleCreateTour}
               />
@@ -154,10 +154,10 @@ export default function DiscoverScreen() {
           ) : (
             // Main Content Sections
             <View className="pt-4">
-              {/* Nearby Tours Section */}
+              {/* Nearby Travelogues Section */}
               <NearbyToursSection
-                tours={nearbyTours}
-                onTourPress={handleTourPress}
+                travelogues={nearbyTravelogues}
+                onTraveloguePress={handleTraveloguePress}
                 userLocation={userLocation}
               />
             </View>

@@ -121,11 +121,52 @@ export async function getMyTravelogues(): Promise<PaginatedResponse<TravelogueSu
   console.log('[TravelogueService] Fetching user travelogues...');
   
   try {
-    const response = await fetcher<R<PaginatedResponse<TravelogueSummary>>>('/travelogue/my-travelogues');
+    const response = await fetcher<R<any>>('/travelogue/my-travelogues');
     console.log('[TravelogueService] User travelogues fetched successfully:', response);
     
     if (response.success && response.data) {
-      return response.data;
+      // Handle the actual backend response format: {items: ["id1", "id2"]}
+      const backendData = response.data;
+      
+      if (backendData.items && Array.isArray(backendData.items)) {
+        // Fetch detailed information for each travelogue ID
+        const traveloguePromises = backendData.items.map(async (uid: string) => {
+          try {
+            const detail = await getTravelogueDetail(uid);
+            // Convert TravelogueDetail to TravelogueSummary
+            const summary: TravelogueSummary = {
+              uid: detail.uid || uid, // Ensure uid is always present
+              title: detail.title || 'Untitled Travelogue',
+              summary: detail.summary,
+              tourUid: detail.tourUid,
+              userId: detail.userId,
+              userName: detail.userName,
+              isPublic: detail.isPublic,
+              createdAt: detail.createdAt,
+              updatedAt: detail.updatedAt,
+              thumbnailUrl: undefined // Not available in detail
+            };
+            console.log(`[TravelogueService] Created summary for ${uid}:`, summary);
+            return summary;
+          } catch (error) {
+            console.warn(`[TravelogueService] Failed to fetch detail for travelogue ${uid}:`, error);
+            return null;
+          }
+        });
+        
+        const travelogues = (await Promise.all(traveloguePromises)).filter(Boolean) as TravelogueSummary[];
+        
+        // Return in expected PaginatedResponse format
+        return {
+          content: travelogues,
+          totalElements: backendData.totalItems || travelogues.length,
+          totalPages: backendData.totalPages || 1,
+          size: backendData.pageSize || 10,
+          number: (backendData.currentPage || 1) - 1, // Convert to 0-based
+          first: !backendData.hasPrevious,
+          last: !backendData.hasNext
+        };
+      }
     }
     
     const errorMsg = response.message || 'Failed to fetch user travelogues';

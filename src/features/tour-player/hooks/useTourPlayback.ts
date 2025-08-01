@@ -3,8 +3,10 @@ import { useRouter } from 'expo-router';
 import * as Location from 'expo-location';
 import { Tour, POI } from '@/types';
 import { getTourByUid } from '@/services/tour.service';
+import { getTravelogueDetail } from '@/services/travelogue.service';
 
 interface UseTourPlaybackOptions {
+  travelogueId?: string;
   tourId?: string;
   tourData?: string;
 }
@@ -25,7 +27,7 @@ interface UseTourPlaybackReturn {
   handleShowAudioPlayer: () => void;
 }
 
-export function useTourPlayback({ tourId, tourData }: UseTourPlaybackOptions): UseTourPlaybackReturn {
+export function useTourPlayback({ travelogueId, tourId, tourData }: UseTourPlaybackOptions): UseTourPlaybackReturn {
   const router = useRouter();
 
   // ----------------- Component state -----------------
@@ -90,7 +92,7 @@ export function useTourPlayback({ tourId, tourData }: UseTourPlaybackOptions): U
 
   // ----------------- Data loading -----------------
   useEffect(() => {
-    if (tourId || tourData) {
+    if (travelogueId || tourId || tourData) {
       if (!hasFetchedRef.current) {
         hasFetchedRef.current = true;
 
@@ -101,7 +103,46 @@ export function useTourPlayback({ tourId, tourData }: UseTourPlaybackOptions): U
             let loadedTour: Tour | null = null;
 
             if (tourData) {
-              loadedTour = JSON.parse(tourData as string);
+              // tourData 是从 progress 页面传来的 TourDataResponse 对象的 JSON 字符串
+              const tourDataResponse = JSON.parse(tourData as string);
+              // 从 TourDataResponse 中提取实际的 tourData 并解析
+              if (tourDataResponse.tourData) {
+                loadedTour = typeof tourDataResponse.tourData === 'string' 
+                  ? JSON.parse(tourDataResponse.tourData) 
+                  : tourDataResponse.tourData;
+              }
+            } else if (travelogueId) {
+              // Load tour data from travelogue
+              const travelogueDetail = await getTravelogueDetail(travelogueId as string);
+              console.log('[useTourPlayback] Travelogue detail loaded:', travelogueDetail);
+              
+              if (travelogueDetail.tourData) {
+                const rawTourData = typeof travelogueDetail.tourData === 'string' 
+                  ? JSON.parse(travelogueDetail.tourData) 
+                  : travelogueDetail.tourData;
+                
+                console.log('[useTourPlayback] Raw tour data:', rawTourData);
+                
+                // Transform the tour data to match Tour interface
+                if (rawTourData && rawTourData.pois) {
+                  loadedTour = {
+                    id: travelogueDetail.tourUid || travelogueDetail.uid,
+                    title: rawTourData.title || travelogueDetail.title || 'Untitled Tour',
+                    description: rawTourData.description || travelogueDetail.summary || 'No description',
+                    coverImageUrl: rawTourData.coverImageUrl,
+                    duration: rawTourData.duration || 60,
+                    pois: rawTourData.pois || [],
+                    route: rawTourData.route,
+                    created_at: travelogueDetail.createdAt,
+                    updated_at: travelogueDetail.updatedAt
+                  };
+                  console.log('[useTourPlayback] Transformed tour:', loadedTour);
+                } else {
+                  console.error('[useTourPlayback] Invalid tour data structure:', rawTourData);
+                }
+              } else {
+                console.error('[useTourPlayback] No tourData found in travelogue detail');
+              }
             } else if (tourId) {
               const tour = await getTourByUid(tourId as string);
               loadedTour = tour || null;
@@ -127,7 +168,7 @@ export function useTourPlayback({ tourId, tourData }: UseTourPlaybackOptions): U
       setTour(null);
       setError(null);
     }
-  }, [tourId, tourData]);
+  }, [travelogueId, tourId, tourData]);
 
   // ----------------- Handlers -----------------
   const handleTourExit = useCallback(() => {

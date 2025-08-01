@@ -1,22 +1,22 @@
 import React from 'react';
 import { View, Text, Pressable, FlatList, ScrollView } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
-import { Tour, TourSummary } from '@/types';
+import { TravelogueSummary } from '@/types';
 import { SquareTourCard } from '@/ui/molecules';
 import { EmptyState } from '@/ui/molecules/EmptyState';
 
 interface NearbyToursSectionProps {
-  tours: TourSummary[];
+  travelogues: TravelogueSummary[];
   loading?: boolean;
-  onTourPress: (tour: TourSummary) => void;
+  onTraveloguePress: (travelogue: TravelogueSummary) => void;
   onSeeAll?: () => void;
   userLocation?: string;
 }
 
 export function NearbyToursSection({ 
-  tours, 
+  travelogues, 
   loading = false, 
-  onTourPress, 
+  onTraveloguePress, 
   onSeeAll,
   userLocation 
 }: NearbyToursSectionProps) {
@@ -46,7 +46,7 @@ export function NearbyToursSection({
     );
   }
 
-  if (!Array.isArray(tours) || tours.length === 0) {
+  if (!Array.isArray(travelogues) || travelogues.length === 0) {
     return (
       <View className="mb-8 px-4">
         <Text className="text-xl font-bold text-gray-900 mb-4">
@@ -89,23 +89,23 @@ export function NearbyToursSection({
           </View>
         </View>
         
-        {onSeeAll && Array.isArray(tours) && tours.length > 6 && (
+        {onSeeAll && Array.isArray(travelogues) && travelogues.length > 6 && (
           <Pressable onPress={onSeeAll} className="bg-blue-50 px-3 py-2 rounded-full">
             <Text className="text-blue-600 font-medium text-sm">探索所有旅游</Text>
           </Pressable>
         )}
       </View>
       
-      {/* Horizontal Tours List */}
+      {/* Horizontal Travelogues List */}
       <FlatList
-        data={tours}
+        data={travelogues}
         renderItem={({ item }) => (
           <SquareTourCard
-            tour={item}
-            onPress={() => onTourPress(item)}
+            travelogue={item}
+            onPress={() => onTraveloguePress(item)}
           />
         )}
-        keyExtractor={(item) => item.uid}
+        keyExtractor={(item) => item.uid || `travelogue-${Math.random()}`}
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ paddingHorizontal: 16 }}

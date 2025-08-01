@@ -27,7 +27,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
   onClose 
 }) => {
   const nearbyPOIs = tour?.pois || [];
-  const { status, togglePlayPause, seekTo, nearestPOI } = useAudioPlayer(nearbyPOIs, currentLocation);
+  const { status, togglePlayPause, seekTo, nearestPOI } = useAudioPlayer(nearbyPOIs, currentLocation, tour?.id);
   const insets = useSafeAreaInsets();
 
   // Always show the player, but show different states
@@ -141,4 +141,4 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
       </View>
     </View>
   );
-}; 
+};

@@ -7,8 +7,10 @@ import { useCreateTour } from '@/features/create-tour/context/CreateTourContext'
 import { Button } from '@/ui/atoms/Button';
 import { ProgressIndicator } from '@/ui/atoms/ProgressIndicator';
 import { LoadingIndicator } from '@/ui/atoms/LoadingIndicator';
-import { createTour, checkTourGenerationStatus } from '@/services/tour.service';
-import type { TourGenerationTask, TourRequest, TourGenerationStatusResponse } from '@/types';
+import { createTour, checkTourGenerationStatus, getTourByUid } from '@/services/tour.service';
+import { getMyTravelogues } from '@/services/travelogue.service';
+import { generateAndSaveNarration } from '@/services/audio-generation.service'; // 新增 import
+import type { TourGenerationTask, TourRequest, TourGenerationStatusResponse, TourDataResponse } from '@/types';
 
 export default function TourProgressScreen() {
   const router = useRouter();
@@ -76,10 +78,20 @@ export default function TourProgressScreen() {
           
           setGenerationTask(task);
           
-          if (task.status === 'COMPLETED' && task.tourData) {
-            console.log('[TourProgress] Tour generation completed successfully');
+          // --- 关键修复点 ---
+          // 1. 只检查 status 是否为 COMPLETED
+          if (task.status === 'COMPLETED') {
+            console.log('[TourProgress] Tour generation completed. Fetching final tour data...');
             setIsPolling(false);
-            handleTourComplete(task.tourData);
+            
+            // 2. 额外调用 getTourByUid 获取完整数据
+            const finalTourData = await getTourByUid(tourUid);
+            if (finalTourData && finalTourData.tourPlan) {
+              handleTourComplete(tourUid, finalTourData);
+            } else {
+              // 如果获取最终数据失败，则报错
+              handleError('Tour completed, but failed to retrieve the final tour plan.');
+            }
           } else if (task.status === 'FAILED') {
             console.error('[TourProgress] Tour generation failed:', task.error);
             setIsPolling(false);
@@ -119,20 +131,42 @@ export default function TourProgressScreen() {
     );
   };
 
-  const handleTourComplete = (tourData: any) => {
-    console.log('[TourProgress] Tour generation completed, navigating to map with data:', tourData);
+  const handleTourComplete = async (completedTourUid: string, tourData: TourDataResponse) => {
+    console.log('[TourProgress] Tour generation and data fetch completed, navigating to map...');
     
-    // Clear context data after successful generation
-    clearPhotoData();
-    
-    // Navigate to map screen with the generated tour in full screen mode
-    router.push({
-      pathname: '/(appLayout)/(map)/map',
-      params: { 
-        tourUid: tourUid,
-        tourData: JSON.stringify(tourData) 
+    // 确保 tourUid 存在
+    if (!completedTourUid) {
+      console.error('[TourProgress] tourUid is null, cannot navigate to map');
+      handleError('Tour ID is missing, cannot proceed to map');
+      return;
+    }
+
+    console.log('[TourProgress] Fetching user travelogues to find the new one...');
+    try {
+      const traveloguesResponse = await getMyTravelogues();
+
+      // 后端返回的 travelogue 列表是按创建时间倒序的，所以第一个就是最新的
+            if (traveloguesResponse && traveloguesResponse.content && traveloguesResponse.content.length > 0) {
+                const newTravelogueId = traveloguesResponse.content[0].uid;
+        console.log(`[TourProgress] Found new travelogueId: ${newTravelogueId}. Navigating to map...`);
+
+        // 清理上下文数据
+        clearPhotoData();
+
+        // 使用 newTravelogueId 导航到地图页
+        router.replace({
+          pathname: '/(appLayout)/(map)/map',
+          params: {
+            travelogueId: newTravelogueId
+          }
+        });
+      } else {
+        throw new Error("No travelogues found after creation.");
       }
-    });
+    } catch (error) {
+      console.error('[TourProgress] Failed to fetch new travelogue:', error);
+      handleError("Could not find the newly created journey. Please check your journeys list.");
+    }
   };
 
   const handleCancel = () => {

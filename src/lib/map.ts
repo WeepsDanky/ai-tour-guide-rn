@@ -1,17 +1,10 @@
 // lib/map.ts
 import MapView, { Marker, Polyline, LatLng } from 'react-native-maps';
+import { POI } from '@/types';
 
 export interface Coordinates {
   lat: number;
   lng: number;
-}
-
-export interface POI {
-  id: string;
-  name: string;
-  coord: Coordinates;
-  description?: string;
-  audio_url?: string;
 }
 
 // Helper to create a marker props object
@@ -59,4 +52,43 @@ export const calculateDistance = (coord1: Coordinates, coord2: Coordinates): num
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
   return R * c; // Distance in meters
-}; 
+};
+
+// 高德地图路线规划
+const AMAP_WEB_KEY = process.env.EXPO_PUBLIC_AMAP_WEB_SERVICE_KEY; // 确保你有一个Web服务的Key
+
+export async function getRouteFromAmap(pois: POI[]): Promise<[number, number][]> {
+  if (pois.length < 2) {
+    return [];
+  }
+  const origin = `${pois[0].coord.lng},${pois[0].coord.lat}`;
+  const destination = `${pois[pois.length - 1].coord.lng},${pois[pois.length - 1].coord.lat}`;
+   
+  const waypoints = pois.slice(1, -1)
+    .map(p => `${p.coord.lng},${p.coord.lat}`)
+    .join(';');
+
+  const url = `https://restapi.amap.com/v3/direction/driving?key=${AMAP_WEB_KEY}&origin=${origin}&destination=${destination}&waypoints=${waypoints}&strategy=0&extensions=base`;
+
+  try {
+    const response = await fetch(url);
+    const data = await response.json();
+
+    if (data.status === '1' && data.route.paths.length > 0) {
+      const steps = data.route.paths[0].steps;
+      const polyline: [number, number][] = [];
+      steps.forEach((step: any) => {
+        step.polyline.split(';').forEach((point: string) => {
+          const [lng, lat] = point.split(',');
+          polyline.push([parseFloat(lng), parseFloat(lat)]);
+        });
+      });
+      return polyline;
+    }
+    console.error('AMap route planning failed:', data.info);
+    return [];
+  } catch (error) {
+    console.error('Error fetching route from AMap:', error);
+    return [];
+  }
+}

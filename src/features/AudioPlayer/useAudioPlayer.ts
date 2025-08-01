@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAudioPlayer as useExpoAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
+import * as FileSystem from 'expo-file-system';
 import { POI } from '@/types';
 import { AudioPlayerStatus, AudioPlayerControls } from './types';
 import { calculateDistance } from '@/lib/map';
@@ -8,9 +9,11 @@ const PROXIMITY_THRESHOLD = 50; // meters
 
 export const useAudioPlayer = (
   nearbyPOIs: POI[],
-  currentLocation: { lat: number; lng: number } | null
+  currentLocation: { lat: number; lng: number } | null,
+  tourId?: string
 ): AudioPlayerControls & { nearestPOI: POI | null } => {
   const [currentPOI, setCurrentPOI] = useState<POI | null>(null);
+  const [localAudioUri, setLocalAudioUri] = useState<string | null>(null);
   const [status, setStatus] = useState<AudioPlayerStatus>({
     isPlaying: false,
     isLoading: false,
@@ -20,8 +23,24 @@ export const useAudioPlayer = (
     error: null,
   });
 
-  // Create audio player instance
-  const audioSource = currentPOI?.audio_url ? { uri: currentPOI.audio_url } : null;
+  // Check for local audio file
+  useEffect(() => {
+    const checkLocalAudio = async () => {
+      if (currentPOI && tourId) {
+        const path = `${FileSystem.documentDirectory}audio/${tourId}/${currentPOI.id}.mp3`;
+        const fileInfo = await FileSystem.getInfoAsync(path);
+        if (fileInfo.exists) {
+          setLocalAudioUri(path);
+        } else {
+          setLocalAudioUri(null); // 如果文件不存在，则 fallback
+        }
+      }
+    };
+    checkLocalAudio();
+  }, [currentPOI, tourId]);
+
+  // 使用本地 URI 或远程 URL
+  const audioSource = localAudioUri ? { uri: localAudioUri } : (currentPOI?.audio_url ? { uri: currentPOI.audio_url } : null);
   const player = useExpoAudioPlayer(audioSource);
   const playerStatus = useAudioPlayerStatus(player);
 
