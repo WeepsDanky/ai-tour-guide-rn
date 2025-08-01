@@ -57,6 +57,47 @@ export const calculateDistance = (coord1: Coordinates, coord2: Coordinates): num
 // 高德地图路线规划
 const AMAP_WEB_KEY = process.env.EXPO_PUBLIC_AMAP_WEB_SERVICE_KEY; // 确保你有一个Web服务的Key
 
+interface AmapPoiDetail {
+  name: string;
+  coord: {
+    lat: number;
+    lng: number;
+  };
+}
+
+/**
+ * 从高德地图Web服务API获取单个POI的详细信息
+ * @param poiId 高德地图POI ID (例如: "B0FFFAB6J2")
+ * @returns 返回POI的名称和坐标，如果未找到则返回null
+ */
+export async function getPoiDetailsFromAmap(poiId: string): Promise<AmapPoiDetail | null> {
+  if (!AMAP_WEB_KEY) {
+    console.error("AMap Web Service Key is not configured. Please set EXPO_PUBLIC_AMAP_WEB_SERVICE_KEY in your .env file.");
+    return null;
+  }
+
+  const url = `https://restapi.amap.com/v3/place/detail?key=${AMAP_WEB_KEY}&id=${poiId}`;
+
+  try {
+    const response = await fetch(url);
+    const data = await response.json();
+
+    if (data.status === '1' && data.pois && data.pois.length > 0) {
+      const poi = data.pois[0];
+      const [lng, lat] = poi.location.split(',').map(Number);
+      return {
+        name: poi.name,
+        coord: { lat, lng },
+      };
+    }
+    console.warn(`[getPoiDetailsFromAmap] Failed to fetch details for POI ID ${poiId}. Info: ${data.info}`);
+    return null;
+  } catch (error) {
+    console.error(`[getPoiDetailsFromAmap] Error fetching details for POI ID ${poiId}:`, error);
+    return null;
+  }
+}
+
 export async function getRouteFromAmap(pois: POI[]): Promise<[number, number][]> {
   if (pois.length < 2) {
     return [];

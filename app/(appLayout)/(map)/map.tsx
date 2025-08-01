@@ -1,3 +1,4 @@
+// app/(appLayout)/(map)/map.tsx
 import React, { useState, useEffect } from 'react';
 import { View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
@@ -8,126 +9,138 @@ import { AudioPlayer } from '~/src/features/AudioPlayer';
 import { EmptyState } from '@/ui/molecules/EmptyState';
 import { useTourPlayback } from '@/features/tour-player/hooks/useTourPlayback';
 import { AudioPlayerButton } from '~/src/features/AudioPlayer/components/AudioPlayerButton';
-import { getTravelogueDetail } from '@/services/travelogue.service';
 import { getRouteFromAmap } from '@/lib/map';
 import { generateAndSaveNarration } from '@/services/audio-generation.service';
-import { TravelogueDetail, POI } from '@/types';
+import { POI } from '@/types'; // Removed TravelogueDetail import as useTourPlayback handles it
 
 export default function MapScreen() {
   const { travelogueId, tourId, tourData } = useLocalSearchParams<{ travelogueId?: string; tourId?: string; tourData?: string }>();
-  const [travelogue, setTravelogue] = useState<TravelogueDetail | null>(null);
+  
   const [routeCoords, setRouteCoords] = useState<[number, number][]>([]);
   const [routeLoading, setRouteLoading] = useState(false);
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
+  
+  // useTourPlayback already provides the full `tour` object with `pois` and `route`
   const {tour, currentPOI, currentLocation, isLoading, error, showAudioPlayer, handleTourExit, handlePOISelect, handleAudioPlayerClose, handleShowAudioPlayer} = useTourPlayback({ travelogueId, tourId, tourData });
 
-  // Load travelogue and plan route
+  // This useEffect is now solely responsible for ensuring `routeCoords` state is updated
+  // from `tour.route` provided by `useTourPlayback`, or attempting to fetch route if missing.
   useEffect(() => {
-    const loadTravelogueAndRoute = async () => {
-      if (travelogueId) {
+    const loadRoute = async () => {
+      // Only attempt to load route if `tour` exists, has POIs, and its route is not already set
+      if (tour?.pois && tour.pois.length > 1 && !tour.route && !routeCoords.length) {
         setRouteLoading(true);
         try {
-          const detail = await getTravelogueDetail(travelogueId);
-          setTravelogue(detail);
-          
-          // Parse tourData JSON to get POIs
-          if (detail.tourData) {
-            const tourPlan = JSON.parse(detail.tourData);
-            const pois = tourPlan.ordered_pois.map((poiId: string) => tourPlan.pois[poiId]);
-            
-            // Get route from AMap
-            const route = await getRouteFromAmap(pois);
+          // Filter out POIs with invalid coordinates before attempting AMap route planning
+          const validPoisForRoute = tour.pois.filter(p => p.coord.lat !== 0 || p.coord.lng !== 0);
+
+          if (validPoisForRoute.length >= 2) { // getRouteFromAmap requires at least 2 points
+            const route = await getRouteFromAmap(validPoisForRoute);
             setRouteCoords(route);
+          } else {
+              console.warn("Not enough valid POIs with coordinates to plan a route from map.tsx.");
+              setRouteCoords([]);
           }
         } catch (e) {
-          console.error('Failed to load travelogue or plan route:', e);
+          console.error('Failed to plan route from AMap:', e);
         } finally {
           setRouteLoading(false);
         }
+      } else if (tour?.route && !routeCoords.length) {
+        // If tour.route is provided by useTourPlayback, update local state
+        setRouteCoords(tour.route);
       }
     };
-    loadTravelogueAndRoute();
-  }, [travelogueId]);
+    loadRoute();
+  }, [tour, routeCoords.length]); // Depend on `tour` to trigger route loading, and routeCoords length to prevent infinite loop
 
-   // 新增逻辑：处理从 progress 页面传来的 tourData
+   // New logic: Process audio generation when tourData param is present (from create-photo flow)
    useEffect(() => {
-     const processNewTour = async () => {
+     const processNewTourAudio = async () => {
        if (tourData && tourId) {
          try {
-           setIsGeneratingAudio(true); // 显示正在生成语音
-           const parsedTourData = JSON.parse(tourData as string);
-           
-           // 解析 POIs
-           const tourPlan = JSON.parse(parsedTourData.tourData);
-           const pois = tourPlan.ordered_pois.map((poiId: string) => tourPlan.pois[poiId]);
-           
-           // 并行生成所有 POI 的语音
-           await Promise.all(pois.map((poi: POI) => generateAndSaveNarration(poi, tourId)));
-           
-           setIsGeneratingAudio(false); // 语音生成完毕
-           // 此时可以刷新 travelogue 列表或直接使用
+           setIsGeneratingAudio(true);
+           // tourData param is stringified TourDataResponse
+           const parsedTourDataResponse = JSON.parse(tourData as string);
+           // tourPlan field inside is a JSON string, needs another parse
+           const tourPlanString = parsedTourDataResponse.tourPlan;
+           const tourPlan = JSON.parse(tourPlanString); // This is the actual tour plan object
+
+           // POIs from AI-generated tour might not have full coords/description ready
+           // Assume tourPlan.pois[poiId] *does* have `description` or similar for narration.
+           const poisForAudioGeneration: POI[] = tourPlan.ordered_pois.map((poiId: string) => {
+             const poiRaw = tourPlan.pois[poiId]; // Raw POI data from AI generation
+             return {
+               id: poiId,
+               name: poiRaw.name || poiId,
+               coord: { lat: poiRaw.latitude || 0, lng: poiRaw.longitude || 0 }, // May be 0,0 initially
+               description: poiRaw.originalNarrative || poiRaw.description, // Get description for narration
+               image_url: poiRaw.imageUrl,
+             };
+           }).filter(p => p.description); // Only generate audio for POIs with a description
+
+           if (poisForAudioGeneration.length > 0) {
+             console.log('[MapScreen] Starting audio generation for new tour POIs...');
+             await Promise.all(
+               poisForAudioGeneration.map((poi: POI) => generateAndSaveNarration(poi, tourId as string))
+             );
+             console.log('[MapScreen] All audio generated and saved.');
+           } else {
+             console.warn('[MapScreen] No POIs with description found for audio generation.');
+           }
          } catch (e) {
-           console.error('Failed to generate audio:', e);
+           console.error('Failed to generate audio for new tour:', e);
+         } finally {
            setIsGeneratingAudio(false);
          }
        }
      };
-     processNewTour();
+     processNewTourAudio();
    }, [tourData, tourId]);
- 
-   // 在 UI 中根据 isGeneratingAudio 显示提示
-   if (isGeneratingAudio) {
+
+   // Handle loading and error states for the entire screen
+    if (isLoading || routeLoading) {
      return (
        <Container>
-         <EmptyState icon="clock-o" title="正在为您生成语音讲解" description="请稍候..." />
+         <EmptyState icon="clock-o" title="Loading Tour" description="Please wait while we load your tour..."/>
        </Container>
      );
    }
- 
-   if (isLoading || routeLoading) {
-    return (
-      <Container>
-        <EmptyState icon="clock-o" title="Loading Tour" description="Please wait while we load your tour..."/>
-      </Container>
-    );
-  }
-  
-  // Show error only if there was an error AND tour/travelogue parameters were provided
-  if (error && (travelogueId || tourId || tourData)) {
-    return (
-      <Container>
-        <EmptyState icon="exclamation-triangle" title="Unable to Load Tour" description={error} actionText="Go Back" onAction={handleTourExit} />
-      </Container>
-    );
-  }
+   
+   if (error && (travelogueId || tourId || tourData)) {
+     return (
+       <Container>
+         <EmptyState icon="exclamation-triangle" title="Unable to Load Tour" description={error} actionText="Go Back" onAction={handleTourExit} />
+       </Container>
+     );
+   }
 
-  // Create enhanced tour with route data
-  const enhancedTour = tour && routeCoords.length > 0 ? {
-    ...tour,
-    route: routeCoords
-  } : tour;
+   // Create enhanced tour with route data (prioritize tour.route if available)
+   const finalRoute = tour?.route || routeCoords; // Use tour.route if already present, otherwise local state
+   const enhancedTour = tour ? { ...tour, route: finalRoute } : null;
 
-  return (
-    <View className="flex-1 bg-white">
-      <View className="flex-1 relative">
-        {enhancedTour && <TourInfoDropdown tour={enhancedTour} />}
-        <TourMap tour={enhancedTour} currentPOI={currentPOI} onPOISelect={handlePOISelect} />
-        {tour && !showAudioPlayer && (
-          <AudioPlayerButton
-            onPress={handleShowAudioPlayer}
-            style={{ position: 'absolute', bottom: 16, right: 16, width: 56, height: 56, zIndex: 10 }}
-            iconSize={24}
-            iconColor="white"
-          />
-        )}
-      </View>
-      {tour && showAudioPlayer && (
-        <AudioPlayer 
-          tour={enhancedTour || tour} 
-          currentLocation={currentLocation}
-          onClose={handleAudioPlayerClose} 
-        />
-      )}
-    </View>
-  );
+   return (
+     <View className="flex-1 bg-white">
+       {/* ... Stack.Screen and other view elements */}
+       <View className="flex-1 relative">
+         {enhancedTour && <TourInfoDropdown tour={enhancedTour} />}
+         {enhancedTour && <TourMap tour={enhancedTour} currentPOI={currentPOI} onPOISelect={handlePOISelect} />}
+         {enhancedTour && !showAudioPlayer && (
+           <AudioPlayerButton
+             onPress={handleShowAudioPlayer}
+             style={{ position: 'absolute', bottom: 16, right: 16, width: 56, height: 56, zIndex: 10 }}
+             iconSize={24}
+             iconColor="white"
+           />
+         )}
+       </View>
+       {enhancedTour && showAudioPlayer && (
+         <AudioPlayer
+           tour={enhancedTour}
+           currentLocation={currentLocation}
+           onClose={handleAudioPlayerClose}
+         />
+       )}
+     </View>
+   );
 }

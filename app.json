@@ -30,7 +30,8 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true, 
+      "bundleIdentifier": "com.lahuse.aitourguidern"
     },
     "android": {
       "adaptiveIcon": {

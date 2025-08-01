@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useRouter } from 'expo-router';
 import * as Location from 'expo-location';
-import { Tour, POI } from '@/types';
+import { Tour, POI, TourDataResponse } from '@/types'; // Ensure TourDataResponse is imported
 import { getTourByUid } from '@/services/tour.service';
 import { getTravelogueDetail } from '@/services/travelogue.service';
+import { getPoiDetailsFromAmap } from '@/lib/map'; // Import the new function
 
 interface UseTourPlaybackOptions {
   travelogueId?: string;
@@ -103,66 +104,118 @@ export function useTourPlayback({ travelogueId, tourId, tourData }: UseTourPlayb
             let loadedTour: Tour | null = null;
 
             if (tourData) {
-              // tourData 是从 progress 页面传来的 TourDataResponse 对象的 JSON 字符串
-              const tourDataResponse = JSON.parse(tourData as string);
-              // 从 TourDataResponse 中提取实际的 tourData 并解析
-              if (tourDataResponse.tourData) {
-                loadedTour = typeof tourDataResponse.tourData === 'string' 
-                  ? JSON.parse(tourDataResponse.tourData) 
-                  : tourDataResponse.tourData;
+              // `tourData` param is a stringified TourDataResponse
+              const tourDataResponse: TourDataResponse = JSON.parse(tourData as string);
+              // `tourPlan` field inside TourDataResponse is itself a JSON string
+              if (tourDataResponse.tourPlan) {
+                const tourPlan = JSON.parse(tourDataResponse.tourPlan);
+                // Map the POIs from the raw tour plan (may have 0,0 coords or null names)
+                const poisFromTourPlan: POI[] = tourPlan.ordered_pois.map((poiId: string) => {
+                  const rawPoi = tourPlan.pois[poiId]; // Raw POI data from AI generation
+                  const lat = rawPoi.latitude ?? 0;
+                  const lng = rawPoi.longitude ?? 0;
+                  return {
+                    id: poiId,
+                    name: rawPoi.name || rawPoi.originalNarrative || poiId,
+                    coord: { lat: lat, lng: lng },
+                    description: rawPoi.originalNarrative || rawPoi.description || 'No description available.',
+                    image_url: rawPoi.imageUrl,
+                    audio_url: rawPoi.audioUrl,
+                    duration: rawPoi.durationSeconds,
+                  };
+                }).filter(p => p.coord.lat !== 0 || p.coord.lng !== 0); // Filter out invalid coordinates
+
+                loadedTour = {
+                  id: tourDataResponse.tourUid,
+                  title: tourDataResponse.title || 'Generated Tour',
+                  description: tourDataResponse.description || 'A newly generated tour.',
+                  coverImageUrl: tourDataResponse.coverImageUrl,
+                  duration: tourPlan.total_duration_min || 60, // Use duration from the raw tour plan
+                  pois: poisFromTourPlan,
+                  route: tourPlan.route, // Assuming route is directly in tourPlan
+                  created_at: tourDataResponse.createdAt || new Date().toISOString(),
+                  updated_at: tourDataResponse.updatedAt || new Date().toISOString(),
+                };
               }
             } else if (travelogueId) {
-              // Load tour data from travelogue
+              // Load tour data from travelogue detail API
               const travelogueDetail = await getTravelogueDetail(travelogueId as string);
-              console.log('[useTourPlayback] Travelogue detail loaded:', travelogueDetail);
+              // console.log('[useTourPlayback] Travelogue detail loaded:', travelogueDetail);
               
-              // --- 关键优化点 ---
-              // 后端已经聚合了 POI 信息，我们应该直接使用 travelogueDetail.pois
-              // tourData 主要用来获取 route 等原始路线信息
               if (travelogueDetail && travelogueDetail.pois) {
-                // 调试：查看后端返回的 PoiDetail 结构
-                console.log('[useTourPlayback] First POI detail structure:', JSON.stringify(travelogueDetail.pois[0], null, 2));
-                
-                // 将后端返回的 PoiDetail 转换为前端的 POI 类型
-                // 注意：后端返回的 PoiDetail 结构可能与前端 POI 不同，需要适配
-                const frontendPois: POI[] = travelogueDetail.pois.map((poiDetail: any) => {
-                  console.log('[useTourPlayback] Processing POI detail:', poiDetail);
-                  return {
-                    id: poiDetail.poiIdInTour || poiDetail.id || poiDetail.poiId, // 尝试多个可能的ID字段
-                    name: poiDetail.name || poiDetail.title || poiDetail.poiName || 'Unknown POI',
-                    coord: { 
-                      lat: poiDetail.latitude || poiDetail.lat || poiDetail.coord?.lat, 
-                      lng: poiDetail.longitude || poiDetail.lng || poiDetail.coord?.lng 
-                    },
-                    description: poiDetail.userNotes || poiDetail.originalNarrative || poiDetail.description || poiDetail.narrative, // 优先用用户笔记
-                    // 其他字段根据需要进行映射...
-                    // image_url, audio_url 等可以从 userPhotos 或原始数据中获取
-                    image_url: poiDetail.userPhotos?.[0]?.photoUrl || poiDetail.imageUrl || poiDetail.image_url,
-                  };
+                // Fetch details for all POIs from AMap concurrently
+                const poiDetailsPromises = travelogueDetail.pois.map(async (poiFromBackend: any) => {
+                  const amapData = await getPoiDetailsFromAmap(poiFromBackend.poiIdInTour);
+                  if (amapData) {
+                    // Merge AMap data with your backend data
+                    return {
+                      id: poiFromBackend.poiIdInTour,
+                      name: amapData.name, // Use name from AMap
+                      coord: amapData.coord, // Use coordinates from AMap
+                      description: poiFromBackend.originalNarrative || poiFromBackend.userNotes || 'No description.',
+                      image_url: poiFromBackend.userPhotos?.[0]?.photoUrl,
+                      audio_url: poiFromBackend.audioUrl,
+                      duration: poiFromBackend.durationSeconds,
+                      // Add any other fields you need from poiFromBackend
+                    };
+                  }
+                  return null; // Return null for failed fetches
                 });
+
+                const resolvedPois = await Promise.all(poiDetailsPromises);
+                const frontendPois = resolvedPois.filter(Boolean) as POI[]; // Filter out any nulls
 
                 const routeCoords = travelogueDetail.tourData?.route;
 
                 loadedTour = {
-                  id: travelogueDetail.travelogueUid,
+                  id: travelogueDetail.uid,
                   title: travelogueDetail.title,
                   description: travelogueDetail.summary || 'No description',
-                  coverImageUrl: travelogueDetail.tourData?.coverImageUrl, // 从 tourData 获取
-                  duration: travelogueDetail.tourData?.duration || 60,
-                  pois: frontendPois, // 使用后端聚合好的 POI
+                  coverImageUrl: travelogueDetail.tourData?.coverImageUrl,
+                  duration: travelogueDetail.tourData?.total_duration_min || 60,
+                  pois: frontendPois, // Use the enriched and valid POIs
                   route: routeCoords,
                   created_at: travelogueDetail.createdAt,
                   updated_at: travelogueDetail.updatedAt,
                 };
-                console.log('[useTourPlayback] Transformed tour from TravelogueDetail:', loadedTour);
+                console.log('[useTourPlayback] Transformed tour from TravelogueDetail with AMap data:', loadedTour);
               } else {
-                // 此处错误日志可以保留，以防后端返回的数据结构再次出错
-                console.error('[useTourPlayback] No pois found in travelogue detail');
                 throw new Error('Invalid travelogue data received from server.');
               }
             } else if (tourId) {
-              const tour = await getTourByUid(tourId as string);
-              loadedTour = tour || null;
+              // This path is for loading a raw Tour via its UID (not a travelogue)
+              const tourResponse = await getTourByUid(tourId as string); // This returns R<TourDataResponse>
+              if (tourResponse && tourResponse.tourPlan) {
+                const tourPlan = JSON.parse(tourResponse.tourPlan);
+                const poisFromTourPlan: POI[] = tourPlan.ordered_pois.map((poiId: string) => {
+                  const rawPoi = tourPlan.pois[poiId];
+                  const lat = rawPoi.latitude ?? 0;
+                  const lng = rawPoi.longitude ?? 0;
+                  return {
+                    id: poiId,
+                    name: rawPoi.name || poiId,
+                    coord: { lat: lat, lng: lng },
+                    description: rawPoi.originalNarrative || rawPoi.description,
+                    image_url: rawPoi.imageUrl,
+                    audio_url: rawPoi.audioUrl,
+                    duration: rawPoi.durationSeconds,
+                  };
+                }).filter(p => p.coord.lat !== 0 || p.coord.lng !== 0);
+
+                loadedTour = {
+                  id: tourId,
+                  title: tourResponse.title || 'Tour',
+                  description: tourResponse.description || 'No description',
+                  coverImageUrl: tourResponse.coverImageUrl,
+                  duration: tourPlan.total_duration_min || 60,
+                  pois: poisFromTourPlan,
+                  route: tourPlan.route, // Assuming route is directly in tourPlan
+                  created_at: tourResponse.createdAt || new Date().toISOString(),
+                  updated_at: tourResponse.updatedAt || new Date().toISOString(),
+                };
+              } else {
+                throw new Error('No tour plan found for tour UID.');
+              }
             }
 
             if (!loadedTour) {
@@ -180,7 +233,6 @@ export function useTourPlayback({ travelogueId, tourId, tourData }: UseTourPlayb
         loadTour();
       }
     } else {
-      // No tour specified - empty map mode
       setIsLoading(false);
       setTour(null);
       setError(null);

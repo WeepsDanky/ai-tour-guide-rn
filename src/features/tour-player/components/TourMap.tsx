@@ -1,9 +1,15 @@
-import React, { useRef, useEffect, memo, useState } from 'react';
-import { View, Text } from 'react-native';
-import MapView, { Marker, Callout, PROVIDER_GOOGLE, Polyline } from 'react-native-maps';
+
+import React, { useRef, useEffect, memo } from 'react';
+import { View, Platform } from 'react-native';
+import { MapView, Marker, Polyline } from 'react-native-amap3d';
+import type { CameraPosition } from 'react-native-amap3d';
 import { Tour, POI } from '@/types';
 
-// --- New Memoized POI Marker Component ---
+// Import SVG files as React components
+import MarkerSelected from '~/assets/marker-selected.svg';
+import MarkerDefault from '~/assets/marker-default.svg';
+
+// POIMarker 组件，使用新的 Marker
 interface POIMarkerProps {
   poi: POI;
   index: number;
@@ -11,59 +17,36 @@ interface POIMarkerProps {
   onSelect: (poi: POI) => void;
 }
 
-const POIMarker = memo(({ poi, index, isSelected, onSelect }: POIMarkerProps) => {
-  // tracksViewChanges optimization: only track changes when selected status changes.
-  const [tracksViewChanges, setTracksViewChanges] = useState(true);
-
-  useEffect(() => {
-    // When the selection changes, enable tracking to update the color, then disable it.
-    setTracksViewChanges(true);
-    const timeout = setTimeout(() => {
-      setTracksViewChanges(false);
-    }, 200); // A brief delay for the re-render to complete.
-
-    return () => clearTimeout(timeout);
-  }, [isSelected]);
-
-
+const POIMarker = memo(({ poi, isSelected, onSelect }: POIMarkerProps) => {
   const handlePress = () => {
     onSelect(poi);
   };
 
+  // Render the SVG component *inside* the <Marker>.
+  // This creates a custom marker view. You can now control the size!
   return (
     <Marker
-      coordinate={{
+      position={{
         latitude: poi.coord.lat,
         longitude: poi.coord.lng,
       }}
-      pinColor={isSelected ? '#3B82F6' : undefined}
-      tracksViewChanges={tracksViewChanges} // Control re-rendering
       onPress={handlePress}
+      // No longer using the `icon` or `title` prop here
     >
-      <Callout tooltip>
-        <View className="p-2 min-w-[150px]">
-           <View className="bg-white rounded-lg p-2 shadow-md">
-            <View className="flex-row items-center space-x-2">
-              <View className="w-6 h-6 bg-blue-100 rounded-full items-center justify-center">
-                <Text className="text-blue-500 font-bold">{index + 1}</Text>
-              </View>
-              <Text className="text-base font-medium text-gray-900 flex-shrink" style={{maxWidth: 180}}>{poi.name}</Text>
-            </View>
-            {poi.description && (
-              <Text className="text-sm text-gray-600 mt-1" numberOfLines={2}>
-                {poi.description}
-              </Text>
-            )}
-          </View>
-        </View>
-      </Callout>
+      {/* The content inside the marker becomes the custom icon */}
+      <View style={{ alignItems: 'center' }}>
+        {isSelected ? (
+          <MarkerSelected width={48} height={48} />
+        ) : (
+          <MarkerDefault width={36} height={36} />
+        )}
+      </View>
     </Marker>
   );
 });
 POIMarker.displayName = 'POIMarker';
 
 
-// --- Main TourMap Component ---
 interface TourMapProps {
   tour: Tour | null;
   currentPOI?: POI | null;
@@ -71,44 +54,54 @@ interface TourMapProps {
 }
 
 export const TourMap = memo(({ tour, currentPOI, onPOISelect }: TourMapProps) => {
+  // 3. 将 MapView ref 的类型改为 react-native-amap3d 的 MapView
   const mapRef = useRef<MapView>(null);
 
-  const initialRegion = tour?.pois[0] ? {
-    latitude: tour.pois[0].coord.lat,
-    longitude: tour.pois[0].coord.lng,
-    latitudeDelta: 0.0922,
-    longitudeDelta: 0.0421,
-  } : {
-    latitude: 37.7749, // Default to San Francisco
-    longitude: -122.4194,
-    latitudeDelta: 0.0922,
-    longitudeDelta: 0.0421,
-  };
+  // 4. 替换 initialRegion 为 initialCameraPosition
+  //    高德地图使用 zoom 级别（3-20），而不是经纬度增量。15 是一个比较合适的城市级别缩放。
+  const initialCameraPosition: CameraPosition | undefined = tour?.pois[0] ? {
+    target: {
+      latitude: tour.pois[0].coord.lat,
+      longitude: tour.pois[0].coord.lng,
+    },
+    zoom: 15,
+  } : undefined;
 
-  // Animate to the selected POI or fit all markers on initial load
+  // 5. 替换地图视角控制逻辑
   useEffect(() => {
-    if (mapRef.current && tour) {
-        if (currentPOI) {
-            mapRef.current.animateToRegion({
-                latitude: currentPOI.coord.lat,
-                longitude: currentPOI.coord.lng,
-                latitudeDelta: 0.01,
-                longitudeDelta: 0.01,
-            }, 600);
-        } else if (tour.pois.length > 0) {
-            // On initial load, fit all markers in the view
-            mapRef.current.fitToCoordinates(
-                tour.pois.map(p => ({latitude: p.coord.lat, longitude: p.coord.lng})),
-                {
-                    edgePadding: { top: 150, right: 50, bottom: 50, left: 50 },
-                    animated: true,
-                }
-            );
-        }
+    if (!mapRef.current || !tour) return;
+
+    if (currentPOI) {
+      // animateToRegion 替换为 moveCamera
+      mapRef.current.moveCamera(
+        {
+          target: {
+            latitude: currentPOI.coord.lat,
+            longitude: currentPOI.coord.lng,
+          },
+          zoom: 17, // 聚焦到单个点时，放大一些
+          tilt: 30,
+        },
+        600 // 动画时长 (ms)
+      );
+    } else if (tour.pois.length > 0) {
+      // fitToCoordinates 的替换逻辑
+      // amap3d 没有直接的 fitToCoordinates 方法。我们采用一种简化的方式：
+      // 移动到第一个点的位置，并设置一个能看清大概范围的 zoom level。
+      mapRef.current.moveCamera(
+        {
+          target: {
+            latitude: tour.pois[0].coord.lat,
+            longitude: tour.pois[0].coord.lng,
+          },
+          zoom: 12,
+        },
+        600
+      );
     }
   }, [currentPOI, tour]);
 
-
+  // 6. Polyline 坐标格式兼容，无需修改
   const polylineCoords = React.useMemo(() => {
     return tour?.route ? tour.route.map(([lng, lat]) => ({
       latitude: lat,
@@ -117,20 +110,19 @@ export const TourMap = memo(({ tour, currentPOI, onPOISelect }: TourMapProps) =>
   }, [tour?.route]);
 
   return (
-    <View className="flex-1">
+    <View style={{ flex: 1 }}>
+      {/* 7. 更新 MapView 的 props */}
       <MapView
         ref={mapRef}
-        provider={PROVIDER_GOOGLE}
         style={{ flex: 1 }}
-        initialRegion={initialRegion}
-        showsUserLocation
-        showsMyLocationButton={false}
-        showsCompass={false}
-        pitchEnabled={false}
-        rotateEnabled={false}
-        moveOnMarkerPress={false}
+        initialCameraPosition={initialCameraPosition}
+        myLocationEnabled // showsUserLocation -> myLocationEnabled
+        myLocationButtonEnabled={false} // showsMyLocationButton -> myLocationButtonEnabled
+        compassEnabled={false} // showsCompass -> compassEnabled
+        tiltGesturesEnabled={false} // pitchEnabled -> tiltGesturesEnabled
+        rotateGesturesEnabled={false} // rotateEnabled -> rotateGesturesEnabled
+        // 移除 provider 和 moveOnMarkerPress 属性
       >
-        {/* Render memoized markers */}
         {tour?.pois.map((poi, index) => (
           <POIMarker
             key={poi.id}
@@ -141,16 +133,17 @@ export const TourMap = memo(({ tour, currentPOI, onPOISelect }: TourMapProps) =>
           />
         ))}
 
-        {/* Tour Route Line */}
+        {/* 8. 更新 Polyline 的 props */}
         {polylineCoords.length > 0 && (
           <Polyline
-            coordinates={polylineCoords}
-            strokeColor="#3B82F6"
-            strokeWidth={4}
-            lineDashPattern={[5, 5]}
+            points={polylineCoords} // coordinates -> points
+            color="#3B82F6" // strokeColor -> color
+            width={4} // strokeWidth -> width
+            dotted // lineDashPattern={[5, 5]} -> dotted={true}
           />
         )}
       </MapView>
     </View>
   );
 });
+TourMap.displayName = 'TourMap';
