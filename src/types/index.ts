@@ -42,9 +42,8 @@ export interface Tour {
   id: string;
   title: string;
   description: string;
-  image: string;
+  coverImageUrl?: string;
   duration: number; // in minutes
-  difficulty: TourDifficulty;
   pois: POI[];
   route?: [number, number][]; // array of [lng, lat] coordinates
   created_at: string;
@@ -102,8 +101,28 @@ export interface TourSummary {
   description: string;
   locationName: string;
   status: 'PENDING' | 'GENERATING' | 'COMPLETED' | 'FAILED';
+  coverImageUrl?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+/**
+ * My tours response from backend
+ */
+export interface MyToursResponse {
+  tourUids: string[];
+}
+
+/**
+ * Tour data response from backend
+ */
+export interface TourDataResponse {
+  status: 'PENDING' | 'GENERATING' | 'COMPLETED' | 'FAILED';
+  tourPlan: string; // JSON string containing tour plan
+  tourUid: string;
+  title?: string;
+  description?: string;
+  coverImageUrl?: string;
 }
 
 /**

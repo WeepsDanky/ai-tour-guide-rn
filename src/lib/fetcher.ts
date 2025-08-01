@@ -53,7 +53,7 @@ export const fetcher = async <T = any>(path: string, options: RequestInit = {}):
   }
   
   const data = await response.json();
-  console.log('[Fetcher] Response data:', data);
+  // console.log('[Fetcher] Response data:', data);
   return data;
 };
 
@@ -73,7 +73,7 @@ export const postData = async <T = any>(path: string, data: any, method: string 
     console.log('[Fetcher] Post response status:', response.status, response.statusText);
     
     const result = await response.json();
-    console.log('[Fetcher] Post response data:', result);
+    // console.log('[Fetcher] Post response data:', result);
     
     if (!response.ok) {
       console.error('[Fetcher] Post request failed:', result);
@@ -139,7 +139,7 @@ export const deleteData = async <T = any>(path: string): Promise<APIResponse<T>>
       result = {}; // Empty response is OK for DELETE
     }
     
-    console.log('[Fetcher] Delete response data:', result);
+    // console.log('[Fetcher] Delete response data:', result);
     
     return {
       success: true,

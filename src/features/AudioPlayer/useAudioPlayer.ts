@@ -63,7 +63,7 @@ export const useAudioPlayer = (
         player.pause();
       }
     }
-  }, [currentLocation, nearbyPOIs, currentPOI?.id, player]);
+  }, [currentLocation, nearbyPOIs, currentPOI?.id, player, currentPOI, playerStatus?.isLoaded]);
 
   // Update our internal status based on expo-audio player status
   useEffect(() => {

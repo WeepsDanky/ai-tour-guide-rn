@@ -82,7 +82,7 @@ export function TourCard({
       {/* Image */}
       <View className={`relative ${styles.image} overflow-hidden`}>
         <Image 
-          source={{ uri: tour.image }} 
+          source={{ uri: tour.coverImageUrl || 'https://via.placeholder.com/400x300?text=Tour' }} 
           className="absolute w-full h-full" 
           resizeMode="cover" 
         />
@@ -95,14 +95,6 @@ export function TourCard({
           </Text>
         </View>
 
-        {/* Difficulty Badge - only show on larger variants */}
-        {(variant === 'large' || variant === 'featured') && (
-          <View className={`absolute top-2 left-2 rounded-full px-2 py-1 ${difficultyColors[tour.difficulty]}`}>
-            <Text className={`text-xs font-medium capitalize`}>
-              {tour.difficulty}
-            </Text>
-          </View>
-        )}
       </View>
 
       {/* Content */}
@@ -126,15 +118,8 @@ export function TourCard({
             </Text>
           </View>
           
-          {variant === 'small' && (
-            <View className={`rounded-full px-2 py-0.5 ${difficultyColors[tour.difficulty]}`}>
-              <Text className="text-xs font-medium capitalize">
-                {tour.difficulty}
-              </Text>
-            </View>
-          )}
         </View>
       </View>
     </Pressable>
   );
-} 
+}

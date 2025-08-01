@@ -9,12 +9,7 @@ interface SquareTourCardProps {
 }
 
 export function SquareTourCard({ tour, onPress }: SquareTourCardProps) {
-  const difficultyColors = {
-    easy: 'bg-green-100 text-green-700',
-    medium: 'bg-yellow-100 text-yellow-700',
-    hard: 'bg-red-100 text-red-700',
-  };
-
+  // Debug log to check tour data
   return (
     <Pressable 
       onPress={onPress}
@@ -24,7 +19,7 @@ export function SquareTourCard({ tour, onPress }: SquareTourCardProps) {
       {/* Square Image */}
       <View className="relative aspect-square overflow-hidden">
         <Image 
-          source={{ uri: 'https://via.placeholder.com/200x200?text=Tour' }} 
+          source={{ uri: tour.coverImageUrl || 'https://via.placeholder.com/200x200?text=Tour' }} 
           className="absolute w-full h-full" 
           resizeMode="cover" 
         />
