@@ -116,32 +116,49 @@ export function useTourPlayback({ travelogueId, tourId, tourData }: UseTourPlayb
               const travelogueDetail = await getTravelogueDetail(travelogueId as string);
               console.log('[useTourPlayback] Travelogue detail loaded:', travelogueDetail);
               
-              if (travelogueDetail.tourData) {
-                const rawTourData = typeof travelogueDetail.tourData === 'string' 
-                  ? JSON.parse(travelogueDetail.tourData) 
-                  : travelogueDetail.tourData;
+              // --- 关键优化点 ---
+              // 后端已经聚合了 POI 信息，我们应该直接使用 travelogueDetail.pois
+              // tourData 主要用来获取 route 等原始路线信息
+              if (travelogueDetail && travelogueDetail.pois) {
+                // 调试：查看后端返回的 PoiDetail 结构
+                console.log('[useTourPlayback] First POI detail structure:', JSON.stringify(travelogueDetail.pois[0], null, 2));
                 
-                console.log('[useTourPlayback] Raw tour data:', rawTourData);
-                
-                // Transform the tour data to match Tour interface
-                if (rawTourData && rawTourData.pois) {
-                  loadedTour = {
-                    id: travelogueDetail.tourUid || travelogueDetail.uid,
-                    title: rawTourData.title || travelogueDetail.title || 'Untitled Tour',
-                    description: rawTourData.description || travelogueDetail.summary || 'No description',
-                    coverImageUrl: rawTourData.coverImageUrl,
-                    duration: rawTourData.duration || 60,
-                    pois: rawTourData.pois || [],
-                    route: rawTourData.route,
-                    created_at: travelogueDetail.createdAt,
-                    updated_at: travelogueDetail.updatedAt
+                // 将后端返回的 PoiDetail 转换为前端的 POI 类型
+                // 注意：后端返回的 PoiDetail 结构可能与前端 POI 不同，需要适配
+                const frontendPois: POI[] = travelogueDetail.pois.map((poiDetail: any) => {
+                  console.log('[useTourPlayback] Processing POI detail:', poiDetail);
+                  return {
+                    id: poiDetail.poiIdInTour || poiDetail.id || poiDetail.poiId, // 尝试多个可能的ID字段
+                    name: poiDetail.name || poiDetail.title || poiDetail.poiName || 'Unknown POI',
+                    coord: { 
+                      lat: poiDetail.latitude || poiDetail.lat || poiDetail.coord?.lat, 
+                      lng: poiDetail.longitude || poiDetail.lng || poiDetail.coord?.lng 
+                    },
+                    description: poiDetail.userNotes || poiDetail.originalNarrative || poiDetail.description || poiDetail.narrative, // 优先用用户笔记
+                    // 其他字段根据需要进行映射...
+                    // image_url, audio_url 等可以从 userPhotos 或原始数据中获取
+                    image_url: poiDetail.userPhotos?.[0]?.photoUrl || poiDetail.imageUrl || poiDetail.image_url,
                   };
-                  console.log('[useTourPlayback] Transformed tour:', loadedTour);
-                } else {
-                  console.error('[useTourPlayback] Invalid tour data structure:', rawTourData);
-                }
+                });
+
+                const routeCoords = travelogueDetail.tourData?.route;
+
+                loadedTour = {
+                  id: travelogueDetail.travelogueUid,
+                  title: travelogueDetail.title,
+                  description: travelogueDetail.summary || 'No description',
+                  coverImageUrl: travelogueDetail.tourData?.coverImageUrl, // 从 tourData 获取
+                  duration: travelogueDetail.tourData?.duration || 60,
+                  pois: frontendPois, // 使用后端聚合好的 POI
+                  route: routeCoords,
+                  created_at: travelogueDetail.createdAt,
+                  updated_at: travelogueDetail.updatedAt,
+                };
+                console.log('[useTourPlayback] Transformed tour from TravelogueDetail:', loadedTour);
               } else {
-                console.error('[useTourPlayback] No tourData found in travelogue detail');
+                // 此处错误日志可以保留，以防后端返回的数据结构再次出错
+                console.error('[useTourPlayback] No pois found in travelogue detail');
+                throw new Error('Invalid travelogue data received from server.');
               }
             } else if (tourId) {
               const tour = await getTourByUid(tourId as string);
