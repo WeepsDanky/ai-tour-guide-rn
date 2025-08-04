@@ -17,7 +17,7 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
   const getTabIcon = (routeName: string): React.ComponentProps<typeof FontAwesome>['name'] => {
     switch (routeName) {
       case 'index':
-        return 'compass';
+        return 'th';
       case 'profile':
         return 'user';
       default:
@@ -31,11 +31,11 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
   const getTabLabel = (routeName: string): string => {
     switch (routeName) {
       case 'index':
-        return '发现';
+        return '社区';
       case 'profile':
         return '我的';
       case 'create':
-        return '创建';
+        return '游览';
       default:
         return routeName;
     }
@@ -64,13 +64,7 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
               <Pressable
                 key={route.key}
                 onPress={() => {
-                  // If we're already on the index tab, directly navigate with fresh params
-                  const currentRoute = navigation.getState().routes[navigation.getState().index];
-                  if (currentRoute.name === 'index') {
-                    navigation.navigate('index', { showCreateModal: 'true' });
-                  } else {
-                    navigation.navigate('create');
-                  }
+                  navigation.navigate('create');
                 }}
                 accessibilityLabel="Create new tour"
                 accessibilityRole="button"
@@ -84,7 +78,7 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
                   
                   {/* Label */}
                   <Text className="text-xs font-medium mt-1 text-blue-500">
-                    创建
+                    游览
                   </Text>
                 </View>
               </Pressable>

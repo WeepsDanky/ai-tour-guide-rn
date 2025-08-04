@@ -8,6 +8,7 @@ import { useCreateTour } from '@/features/create-tour/context/CreateTourContext'
 import { LocationPill } from '@/ui/molecules/LocationPill';
 import { TextArea } from '@/ui/atoms/TextArea';
 import { Button } from '@/ui/atoms/Button';
+import { useChat } from '@/features/tour-chat/hooks/useChat';
 
 export default function ConfirmPhotoScreen() {
   const router = useRouter();
@@ -20,6 +21,7 @@ export default function ConfirmPhotoScreen() {
     setPreferencesText,
     clearPhotoData 
   } = useCreateTour();
+  const { sendPhoto } = useChat();
 
   const [localPreferences, setLocalPreferences] = useState(preferencesText);
   const [isLocationEditable, setIsLocationEditable] = useState(false);
@@ -79,9 +81,11 @@ export default function ConfirmPhotoScreen() {
       setPreferencesText(localPreferences);
       console.log('[ConfirmPhoto] Preferences saved to context');
       
-      // Navigate to progress screen
-      console.log('[ConfirmPhoto] Navigating to progress screen');
-      router.push('/create-photo/progress');
+      // Send photo to chat with location and preferences
+      await sendPhoto(photoUri, locationLabel.trim(), localPreferences.trim() || undefined);
+      
+      // Close all modal screens and return to the full-screen chat interface
+      router.dismissAll();
     } catch (error) {
       setLoading(false);
       console.error('[ConfirmPhoto] Failed to start tour generation:', error);

@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, Alert, Pressable, Text, ScrollView } from 'react-native';
-import MapView from 'react-native-maps';
 import { Tour, POI, PlaybackState, GeofenceEvent } from '@/types';
 import { FontAwesome } from '@expo/vector-icons';
 
@@ -27,7 +26,7 @@ export function TourPlayer({
   const [internalCurrentPOI, setInternalCurrentPOI] = useState<POI | null>(null);
   const [visitedPOIs, setVisitedPOIs] = useState<Set<string>>(new Set());
 
-  const mapRef = useRef<MapView>(null);
+
 
   // Memoize tour ID to prevent unnecessary re-initializations
   const tourId = useMemo(() => tour.id, [tour.id]);
@@ -76,16 +75,6 @@ export function TourPlayer({
       externalOnPOISelect(poi);
     } else {
       setInternalCurrentPOI(poi);
-    }
-    
-    // Pan map to POI
-    if (mapRef.current) {
-      mapRef.current.animateToRegion({
-        latitude: poi.coord.lat,
-        longitude: poi.coord.lng,
-        latitudeDelta: 0.005,
-        longitudeDelta: 0.005,
-      }, 1000);
     }
   }, [externalOnPOISelect]);
 
@@ -223,4 +212,4 @@ export function TourPlayer({
       )}
     </View>
   );
-} 
+}

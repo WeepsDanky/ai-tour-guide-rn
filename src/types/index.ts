@@ -354,9 +354,6 @@ export interface APIResponse<T = any> {
  * Environment configuration
  */
 export interface EnvConfig {
-  AMAP_JS_KEY: string;
-  AMAP_SECURITY_CODE: string;
-  AMAP_WEB_SERVICE_KEY?: string;
   BACKEND_URL: string;
 }
 

@@ -46,7 +46,7 @@ Based on the current implementation, the app supports the following features:
 -   **Language**: [TypeScript](https://www.typescriptlang.org/)
 -   **Navigation**: [Expo Router](https://docs.expo.dev/router/introduction/)
 -   **Styling**: [NativeWind](https://www.nativewind.dev/) & [Tailwind CSS](https://tailwindcss.com/)
--   **Mapping**: [React Native Maps](https://github.com/react-native-maps/react-native-maps)
+
 -   **Device APIs**: Expo SDK (`expo-location`, `expo-image-picker`, `expo-audio`)
 -   **Linting & Formatting**: ESLint & Prettier
 

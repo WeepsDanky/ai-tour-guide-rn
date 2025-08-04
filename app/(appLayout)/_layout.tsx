@@ -1,10 +1,12 @@
 import { Stack } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { ChatProvider } from '@/features/tour-chat/context/ChatContext';
 
 export default function AppLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <Stack>
+      <ChatProvider>
+        <Stack>
         <Stack.Screen name="(tabs)" options={{ title: 'Home', headerShown: false }} />
         <Stack.Screen name="profile/help" options={{ headerShown: false }} />
         <Stack.Screen name="create-photo/capture" options={{ 
@@ -25,7 +27,8 @@ export default function AppLayout() {
         }} />
         <Stack.Screen name="(map)/map" options={{ title: 'Tour Map' }} />
         <Stack.Screen name="profile/settings" options={{ headerShown: false }} />
-      </Stack>
+        </Stack>
+      </ChatProvider>
     </GestureHandlerRootView>
   );
 }

@@ -11,15 +11,15 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: '发现',
-          tabBarLabel: '发现',
+          title: '社区',
+          tabBarLabel: '社区',
         }}
       />
       <Tabs.Screen
         name="create"
         options={{
-          title: '创建',
-          tabBarLabel: '创建',
+          title: '游览',
+          tabBarLabel: '游览',
         }}
       />
       <Tabs.Screen
@@ -31,4 +31,4 @@ export default function TabLayout() {
       />
     </Tabs>
   );
-} 
+}

@@ -4,7 +4,7 @@ import * as Location from 'expo-location';
 import { Tour, POI, TourDataResponse } from '@/types'; // Ensure TourDataResponse is imported
 import { getTourByUid } from '@/services/tour.service';
 import { getTravelogueDetail } from '@/services/travelogue.service';
-import { getPoiDetailsFromAmap } from '@/lib/map'; // Import the new function
+
 
 interface UseTourPlaybackOptions {
   travelogueId?: string;
@@ -143,27 +143,18 @@ export function useTourPlayback({ travelogueId, tourId, tourData }: UseTourPlayb
               // console.log('[useTourPlayback] Travelogue detail loaded:', travelogueDetail);
               
               if (travelogueDetail && travelogueDetail.pois) {
-                // Fetch details for all POIs from AMap concurrently
-                const poiDetailsPromises = travelogueDetail.pois.map(async (poiFromBackend: any) => {
-                  const amapData = await getPoiDetailsFromAmap(poiFromBackend.poiIdInTour);
-                  if (amapData) {
-                    // Merge AMap data with your backend data
-                    return {
-                      id: poiFromBackend.poiIdInTour,
-                      name: amapData.name, // Use name from AMap
-                      coord: amapData.coord, // Use coordinates from AMap
-                      description: poiFromBackend.originalNarrative || poiFromBackend.userNotes || 'No description.',
-                      image_url: poiFromBackend.userPhotos?.[0]?.photoUrl,
-                      audio_url: poiFromBackend.audioUrl,
-                      duration: poiFromBackend.durationSeconds,
-                      // Add any other fields you need from poiFromBackend
-                    };
-                  }
-                  return null; // Return null for failed fetches
-                });
-
-                const resolvedPois = await Promise.all(poiDetailsPromises);
-                const frontendPois = resolvedPois.filter(Boolean) as POI[]; // Filter out any nulls
+                // Process POIs from backend data
+                const frontendPois = travelogueDetail.pois.map((poiFromBackend: any) => {
+                  return {
+                    id: poiFromBackend.poiIdInTour,
+                    name: poiFromBackend.name || 'Unknown POI',
+                    coord: poiFromBackend.coord || { lat: 0, lng: 0 },
+                    description: poiFromBackend.originalNarrative || poiFromBackend.userNotes || 'No description.',
+                    image_url: poiFromBackend.userPhotos?.[0]?.photoUrl,
+                    audio_url: poiFromBackend.audioUrl,
+                    duration: poiFromBackend.durationSeconds,
+                  };
+                }) as POI[];
 
                 const routeCoords = travelogueDetail.tourData?.route;
 
@@ -178,7 +169,7 @@ export function useTourPlayback({ travelogueId, tourId, tourData }: UseTourPlayb
                   created_at: travelogueDetail.createdAt,
                   updated_at: travelogueDetail.updatedAt,
                 };
-                console.log('[useTourPlayback] Transformed tour from TravelogueDetail with AMap data:', loadedTour);
+                console.log('[useTourPlayback] Transformed tour from TravelogueDetail:', loadedTour);
               } else {
                 throw new Error('Invalid travelogue data received from server.');
               }
