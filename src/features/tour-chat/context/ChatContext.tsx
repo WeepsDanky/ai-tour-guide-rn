@@ -1,8 +1,9 @@
 import React, { createContext, useState, ReactNode, useContext } from 'react';
+import { useRouter } from 'expo-router';
 import { ChatMessage } from '../types';
-import { recogniseAndDescribe } from '../services/poi.service';
 import { createTour, checkTourGenerationStatus, getTourByUid } from '@/services/tour.service';
-import type { TourGenerationTask, TourRequest } from '@/types';
+import { uploadImage } from '@/services/file.service';
+import type { TourGenerationTask, GenerateTourRequest, TourDataResponse } from '@/types';
 
 interface ChatContextType {
   messages: ChatMessage[];
@@ -15,6 +16,7 @@ const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
 export function ChatProvider({ children }: { children: ReactNode }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const router = useRouter();
 
   const getStatusMessage = (status: string): string => {
     switch (status) {
@@ -33,22 +35,36 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
   const handleTourComplete = async (tourUid: string, progressMsgId: string) => {
     try {
-      // Update progress message to completion
+      // 获取最终的 tour 数据
+      const finalTourData = await getTourByUid(tourUid);
+      if (!finalTourData) {
+        throw new Error('Failed to retrieve final tour data.');
+      }
+
+      // 更新 UI 提示
       setMessages(prev => 
         prev.map(msg => 
           msg.id === progressMsgId 
-            ? { ...msg, status: 'done', text: '🎉 游览路线生成完成！您可以在我的页面查看详情。' }
+            ? { ...msg, status: 'done', text: '🎉 游览路线生成完成！即将跳转...' }
             : msg
         )
       );
 
-      console.log(`[ChatContext] Tour generation completed for tourUid: ${tourUid}`);
+      // 导航到地图/播放器页面，并将 tour 数据作为参数传递
+      router.push({
+        pathname: '/(appLayout)/(map)/map',
+        params: {
+          tourData: JSON.stringify(finalTourData),
+          tourId: finalTourData.tourUid
+        },
+      });
+
     } catch (error) {
       console.error('[ChatContext] Failed to handle tour completion:', error);
       setMessages(prev => 
         prev.map(msg => 
           msg.id === progressMsgId 
-            ? { ...msg, status: 'done', text: '游览路线生成完成！您可以在我的页面查看详情。' }
+            ? { ...msg, status: 'done', text: '生成完成，但获取详情失败，请在"我的"页面查看。' }
             : msg
         )
       );
@@ -58,44 +74,40 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const pollTourProgress = async (tourUid: string, progressMsgId: string) => {
     const poll = async () => {
       try {
-        const task: TourGenerationTask = await checkTourGenerationStatus(tourUid);
-        console.log('[ChatContext] Received task status:', task);
+        const response = await checkTourGenerationStatus(tourUid);
+        const task = response; // checkTourGenerationStatus 直接返回 TourGenerationTask
+
+        if (!task) {
+          throw new Error("Invalid status response from server");
+        }
+
+        console.log('[ChatContext] Polling status:', task.status);
         
-        // Update progress message
         setMessages(prev => 
           prev.map(msg => 
             msg.id === progressMsgId 
               ? { 
                   ...msg, 
-                  progress: task.progress,
+                  progress: task.progress || 0, 
                   progressText: task.message || getStatusMessage(task.status)
                 }
               : msg
           )
         );
-        
+
         if (task.status === 'COMPLETED') {
-          console.log('[ChatContext] Tour generation completed');
-          
-          // Get final tour data
-          const finalTourData = await getTourByUid(tourUid);
-          if (finalTourData && finalTourData.tourPlan) {
-            await handleTourComplete(tourUid, progressMsgId);
-          } else {
-            throw new Error('Failed to retrieve the final tour plan');
-          }
+          await handleTourComplete(tourUid, progressMsgId);
         } else if (task.status === 'FAILED') {
           throw new Error(task.error || 'Tour generation failed');
         } else {
-          // Continue polling
-          setTimeout(poll, 2000);
+          setTimeout(poll, 3000); // 轮询间隔 3 秒
         }
       } catch (error) {
         console.error('[ChatContext] Polling error:', error);
         setMessages(prev => 
           prev.map(msg => 
             msg.id === progressMsgId 
-              ? { ...msg, status: 'done', text: '生成游览路线失败，请重试。' }
+              ? { ...msg, status: 'done', text: '生成游览路线时出错，请重试。' }
               : msg
           )
         );
@@ -105,40 +117,41 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     poll();
   };
 
-  const startTourGeneration = async (photoUri: string, location: string, preferences?: string) => {
+  const startTourGeneration = async (photoUrl: string, location: string, preferences?: string) => {
     const progressMsg: ChatMessage = {
       id: Date.now() + '-progress',
       type: 'ai',
       status: 'progress',
       progress: 0,
-      progressText: '准备生成游览路线...',
+      progressText: '正在准备您的游览请求...',
       timestamp: new Date()
     };
-
-    // Add progress message
     setMessages(prev => [...prev, progressMsg]);
 
     try {
-      const request: TourRequest = {
-        location: location.trim(),
-        photos: [photoUri],
-        preferences: preferences?.trim() || undefined,
+      // 将前端请求格式转换为后端需要的 GenerateTourRequest 格式
+      const request: GenerateTourRequest = {
+        locationName: location.trim(),
+        photoUrls: [photoUrl],
+        prefText: preferences?.trim() || '请为我生成一个有趣的导览',
+        language: 'zh', // 或者根据用户设置
       };
       
-      console.log('[ChatContext] Sending tour generation request:', request);
-      
-      // Start tour generation
-      const statusResponse = await createTour(request);
+      const response = await createTour(request); // createTour 现在返回 TourGenerationStatusResponse
+      const statusResponse = response;
+
+      if (!statusResponse) {
+        throw new Error("Failed to start generation process.");
+      }
+
       console.log('[ChatContext] Tour generation started:', statusResponse);
-      
-      // Poll for progress
       await pollTourProgress(statusResponse.tourUid, progressMsg.id);
     } catch (error) {
-      console.error('[ChatContext] Failed to generate tour:', error);
+      console.error('[ChatContext] Failed to start tour generation:', error);
       setMessages(prev => 
         prev.map(msg => 
           msg.id === progressMsg.id 
-            ? { ...msg, status: 'done', text: '抱歉，生成游览路线失败，请重试。' }
+            ? { ...msg, status: 'done', text: `抱歉，请求失败: ${error instanceof Error ? error.message : String(error)}` }
             : msg
         )
       );
@@ -150,6 +163,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       id: Date.now().toString(),
       type: 'user',
       image: uri,
+      text: preferences, // 同时显示用户的偏好文本
       timestamp: new Date()
     };
 
@@ -157,35 +171,37 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       id: Date.now() + '-ai',
       type: 'ai',
       status: 'loading',
+      text: '正在上传和识别图片...',
       timestamp: new Date()
     };
 
-    // Add user message and loading message
     setMessages(prev => [...prev, userMsg, loadingMsg]);
 
     try {
-      // Call vision backend
-      const aiText = await recogniseAndDescribe(uri);
+      // 步骤 1: 上传图片
+      const imageUrl = await uploadImage(uri);
       
-      // Update loading message with AI response
-      setMessages(prev => 
-        prev.map(msg => 
-          msg.id === loadingMsg.id 
-            ? { ...msg, status: 'done', text: aiText }
-            : msg
-        )
-      );
-
-      // If location is provided, start tour generation
+      // 移除 loading 消息, 准备开始生成流程
+      setMessages(prev => prev.filter(msg => msg.id !== loadingMsg.id));
+      
+      // 步骤 2: 开始生成 Tour
       if (location) {
-        await startTourGeneration(uri, location, preferences);
+        await startTourGeneration(imageUrl, location, preferences);
+      } else {
+         // 如果没有位置信息，可以只返回识别结果（如果需要）
+         setMessages(prev => [...prev, { 
+            id: Date.now() + '-info',
+            type: 'ai',
+            status: 'done',
+            text: '图片已上传，但未提供位置信息，无法生成导览。',
+            timestamp: new Date(),
+         }]);
       }
     } catch (error) {
-      // Handle error case
       setMessages(prev => 
         prev.map(msg => 
           msg.id === loadingMsg.id 
-            ? { ...msg, status: 'done', text: '抱歉，图片识别失败，请重试。' }
+            ? { ...msg, status: 'done', text: `处理失败: ${error instanceof Error ? error.message : String(error)}` }
             : msg
         )
       );

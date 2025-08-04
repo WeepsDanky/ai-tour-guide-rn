@@ -73,7 +73,7 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
                 <View className="items-center">
                   {/* Square Create Button */}
                   <View className="w-10 h-8 bg-blue-500 rounded-lg items-center justify-center">
-                    <FontAwesome name="plus" size={18} color="white" />
+                    <FontAwesome name="map-pin" size={18} color="white" />
                   </View>
                   
                   {/* Label */}

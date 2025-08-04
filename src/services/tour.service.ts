@@ -89,27 +89,19 @@ export async function getTourByUid(tourUid: string): Promise<TourDataResponse | 
 
 /**
  * Initiates the tour generation process via the API.
- * @param request - The tour creation request payload.
+ * @param request - The tour creation request payload in GenerateTourRequest format.
  * @returns A promise that resolves to tour generation status response.
  */
-export async function createTour(request: TourRequest): Promise<TourGenerationStatusResponse> {
+export async function createTour(request: GenerateTourRequest): Promise<TourGenerationStatusResponse> {
   console.log('[TourService] Starting tour generation with request:', request);
   
   try {
-    // Convert TourRequest to GenerateTourRequest format
-    const generateRequest: GenerateTourRequest = {
-      locationName: request.location,
-      prefText: request.preferences || '',
-      language: 'zh', // Default to Chinese, could be made configurable
-      photoUrls: request.photos || []
-    };
-    
-    console.log('[TourService] Sending generate request:', generateRequest);
+    console.log('[TourService] Sending generate request:', request);
     
     // 后端返回的结构是 R<TourGenerationStatusResponse>
     // postData 会将其包装为 APIResponse<R<TourGenerationStatusResponse>>
     // 但根据 fetcher.ts 的逻辑，它会解开一层，所以 response.data 就是 R<TourGenerationStatusResponse> 的 data 部分
-    const response = await postData<TourGenerationStatusResponse>('/tour/generate', generateRequest);
+    const response = await postData<TourGenerationStatusResponse>('/tour/generate', request);
     console.log('[TourService] Generate response received:', response);
     
     // 正确的判断逻辑：检查外层 postData 的 success 标志和内层后端返回的数据

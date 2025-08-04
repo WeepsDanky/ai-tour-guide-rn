@@ -40,7 +40,7 @@ export default function CapturePhotoScreen() {
     console.log('[CapturePhoto] Requesting location permission...');
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
-      console.log('[CapturePhoto] Location permission status:', status);
+      // console.log('[CapturePhoto] Location permission status:', status);
       setLocationPermission(status === 'granted');
     } catch (error) {
       console.error('[CapturePhoto] Failed to request location permission:', error);
