@@ -4,16 +4,16 @@
 
 // 引入新的依赖和类型
 import { getCommunityTravelogues } from '@/services/travelogue.service';
-import type { PaginatedResponse, TravelogueSummary } from '@/types';
+import type { PaginatedResponse, TravelogueDetail } from '@/types';
 import { CommunityPost } from '../types';
 
 // 创建数据映射函数
-function mapTravelogueToPost(travelogue: TravelogueSummary): CommunityPost {
+function mapTravelogueToPost(travelogue: TravelogueDetail): CommunityPost {
   return {
     id: travelogue.uid,
     title: travelogue.title,
-    // 注意：后端 TravelogueSummary 没有图片字段，这里我们用一个占位图或让后端增加 thumbnailUrl
-    image: travelogue.thumbnailUrl || `https://picsum.photos/seed/${travelogue.uid}/600/900`,
+    // 从 TravelogueDetail 中寻找封面图，如果不存在则使用占位符
+    image: travelogue.pois?.[0]?.photos?.[0]?.photoUrl || `https://picsum.photos/seed/${travelogue.uid}/600/900`,
     authorName: travelogue.userName || '匿名用户',
     summary: travelogue.summary,
     isPublic: travelogue.isPublic,
@@ -24,7 +24,7 @@ function mapTravelogueToPost(travelogue: TravelogueSummary): CommunityPost {
 // 实现新的 API 调用函数
 export const fetchCommunityPosts = async (page = 1, size = 10): Promise<PaginatedResponse<CommunityPost>> => {
   try {
-    // 假设 getCommunityTravelogues 后端已改为直接返回 TravelogueSummary 列表
+    // 现在 getCommunityTravelogues 返回 PaginatedResponse<TravelogueDetail>
     const response = await getCommunityTravelogues(page, size);
      
     // 如果后端返回的是UID列表，则需要下面的逻辑
@@ -37,7 +37,7 @@ export const fetchCommunityPosts = async (page = 1, size = 10): Promise<Paginate
     */
 
     // 确保数据存在再进行映射
-    const items = response.items || response.content || [];
+    const items = response.content || [];
     return {
       ...response,
       content: items.map(mapTravelogueToPost),

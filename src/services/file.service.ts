@@ -6,7 +6,7 @@ const TOKEN_KEY = 'auth-token';
 interface UploadResponse {
   success: boolean;
   data?: {
-    url: string;
+    imageUrl: string;
   };
   message?: string;
 }
@@ -17,7 +17,7 @@ interface UploadResponse {
  * @returns 返回图片的公开 URL
  */
 export async function uploadImage(localUri: string): Promise<string> {
-  const apiUrl = `${process.env.EXPO_PUBLIC_BACKEND_URL}/file/upload`; // 假设的上传接口
+  const apiUrl = `${process.env.EXPO_PUBLIC_BACKEND_URL}/upload/image`; // 修正为正确的上传接口
   
   // 从 URI 中获取文件名和类型
   const uriParts = localUri.split('/');
@@ -48,9 +48,9 @@ export async function uploadImage(localUri: string): Promise<string> {
 
     const result: UploadResponse = await response.json();
 
-    if (response.ok && result.success && result.data?.url) {
-      console.log(`[FileService] Upload successful, URL: ${result.data.url}`);
-      return result.data.url;
+    if (response.ok && result.success && result.data?.imageUrl) {
+      console.log(`[FileService] Upload successful, URL: ${result.data.imageUrl}`);
+      return result.data.imageUrl;
     } else {
       throw new Error(result.message || 'Image upload failed');
     }

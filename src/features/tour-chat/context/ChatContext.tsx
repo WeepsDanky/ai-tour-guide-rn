@@ -134,9 +134,15 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
     try {
       // 将前端请求格式转换为后端需要的 GenerateTourRequest 格式
+      const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL || '';
+      const fullPhotoUrl = photoUrl.startsWith('http') ? photoUrl : `${backendUrl}${photoUrl}`;
+      
       const request: GenerateTourRequest = {
         locationName: location.trim(),
-        photoUrls: [photoUrl],
+        photos: [{
+          data: fullPhotoUrl,
+          type: 'image'
+        }],
         prefText: preferences?.trim() || '请为我生成一个有趣的导览',
         language: 'zh', // 或者根据用户设置
       };

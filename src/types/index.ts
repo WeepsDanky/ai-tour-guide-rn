@@ -66,7 +66,10 @@ export interface GenerateTourRequest {
   locationName: string;
   prefText: string;
   language: string;
-  photoUrls: string[];
+  photos: Array<{
+    data: string;
+    type: 'image';
+  }>;
 }
 
 /**
@@ -156,7 +159,7 @@ export interface R<T = any> {
  * Create travelogue request
  */
 export interface CreateTravelogueRequest {
-  tourUid: string;
+  tourUids: string[];
   title?: string;
   summary?: string;
   isPublic?: boolean;
