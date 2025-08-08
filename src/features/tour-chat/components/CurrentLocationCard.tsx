@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, Pressable, Alert } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
 import * as Location from 'expo-location';
+import { reverseGeocodeWithCache } from '../../../lib/geocoding';
 
 interface CurrentLocationCardProps {
   onLocationPress?: (location: string, coordinates: { lat: number; lng: number }) => void;
@@ -42,22 +43,15 @@ export default function CurrentLocationCard({ onLocationPress }: CurrentLocation
       const { latitude, longitude } = locationResult.coords;
       setCoordinates({ lat: latitude, lng: longitude });
       
-      // 反向地理编码获取地址
-      const addresses = await Location.reverseGeocodeAsync({ latitude, longitude });
+      // 使用带缓存和重试的地理编码
+      const formattedAddress = await reverseGeocodeWithCache(latitude, longitude, {
+        maxRetries: 2,
+        retryDelay: 1500,
+        fallbackToCoordinates: true
+      });
       
-      if (addresses.length > 0) {
-        const address = addresses[0];
-        const formattedAddress = [
-          address.name,
-          address.street,
-          address.city,
-          address.region
-        ].filter(Boolean).join(', ') || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
-        
-        setLocation(formattedAddress);
-      } else {
-        setLocation(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
-      }
+      // console.log('[CurrentLocationCard] Final address:', formattedAddress);
+      setLocation(formattedAddress);
     } catch (err) {
       console.error('获取位置失败:', err);
       setError('无法获取当前位置');

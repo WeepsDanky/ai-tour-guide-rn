@@ -188,7 +188,7 @@ export async function getCommunityTravelogues(page = 1, size = 10): Promise<Pagi
  
   try {
     const response = await fetcher<R<PaginatedResponse<TravelogueDetail>>>(`/travelogue/community?page=${page}&size=${size}`);
-    console.log('[TravelogueService] Community travelogues fetched successfully:', response);
+    // console.log('[TravelogueService] Community travelogues fetched successfully:', response);
     
     if (response.success && response.data) {
       return response.data;

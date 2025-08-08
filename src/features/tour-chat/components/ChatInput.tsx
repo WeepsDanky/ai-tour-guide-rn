@@ -12,14 +12,7 @@ export default function ChatInput({ onSendPhoto }: ChatInputProps) {
   };
 
   return (
-    <View className="flex-row items-center p-4 border-t border-gray-200 bg-white">
-      {/* Hint Text */}
-      <View className="flex-1">
-        <Text className="text-gray-500 text-sm">
-          拍摄照片，让AI为您介绍景点
-        </Text>
-      </View>
-      
+    <View className="flex-row items-right justify-end p-4 border-t border-gray-200 bg-white">      
       {/* Camera Button */}
       <TouchableOpacity
         onPress={handleCameraPress}

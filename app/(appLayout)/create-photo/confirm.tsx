@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useCreateTour } from '@/features/create-tour/context/CreateTourContext';
 import { LocationPill } from '@/ui/molecules/LocationPill';
-import { TextArea } from '@/ui/atoms/TextArea';
+
 import { Button } from '@/ui/atoms/Button';
 import { useChat } from '@/features/tour-chat/hooks/useChat';
 
@@ -17,13 +17,11 @@ export default function ConfirmPhotoScreen() {
     photoUri, 
     locationLabel, 
     setLocationLabel, 
-    preferencesText, 
-    setPreferencesText,
     clearPhotoData 
   } = useCreateTour();
   const { sendPhoto } = useChat();
 
-  const [localPreferences, setLocalPreferences] = useState(preferencesText);
+
   const [isLocationEditable, setIsLocationEditable] = useState(false);
   const [editedLocation, setEditedLocation] = useState(locationLabel);
   const [loading, setLoading] = useState(false);
@@ -56,13 +54,7 @@ export default function ConfirmPhotoScreen() {
   };
 
   const handleUsePhoto = async () => {
-    console.log('[ConfirmPhoto] User confirmed photo, validating data...');
-    console.log('[ConfirmPhoto] Location:', locationLabel);
-    console.log('[ConfirmPhoto] Preferences:', localPreferences);
-    console.log('[ConfirmPhoto] Photo URI:', photoUri);
-    
-    if (!locationLabel.trim()) {
-      console.warn('[ConfirmPhoto] Location is missing or empty');
+    if (!editedLocation.trim()) {
       Alert.alert('Location Required', 'Please ensure location is available to generate your tour.');
       return;
     }
@@ -75,14 +67,8 @@ export default function ConfirmPhotoScreen() {
 
     try {
       setLoading(true);
-      console.log('[ConfirmPhoto] Starting tour generation process...');
-      
-      // Save preferences to context
-      setPreferencesText(localPreferences);
-      console.log('[ConfirmPhoto] Preferences saved to context');
-      
-      // Send photo to chat with location and preferences
-      await sendPhoto(photoUri, locationLabel.trim(), localPreferences.trim() || undefined);
+      // Send photo to chat with location
+      await sendPhoto(photoUri, locationLabel.trim(), undefined);
       
       // Close all modal screens and return to the full-screen chat interface
       router.dismissAll();
@@ -111,12 +97,11 @@ export default function ConfirmPhotoScreen() {
       <ImageBackground 
         source={{ uri: photoUri }}
         className="flex-1"
-        resizeMode="contain"
       >
         {/* Header with close button */}
         <View 
           className="absolute top-0 left-0 right-0 flex-row justify-between items-center px-4 z-10"
-          style={{ paddingTop: insets.top + 12 }}
+          style={{ paddingTop: 10 }}
         >
           <Pressable
             onPress={handleClose}
@@ -129,7 +114,7 @@ export default function ConfirmPhotoScreen() {
 
         {/* Location Pill */}
         <View 
-          className="absolute top-1/4 left-0 right-0 px-4 z-10"
+          className="absolute top-safe left-0 right-0 px-4 z-10"
         >
           <LocationPill
             location={editedLocation}
@@ -142,38 +127,28 @@ export default function ConfirmPhotoScreen() {
 
         {/* Bottom Section */}
         <View 
-          className="absolute bottom-20 left-0 right-0 px-4 z-10"
-          style={{ paddingBottom: insets.bottom }}
+          className="absolute bottom-0 left-0 right-0 backdrop-blur-sm z-10"
+          style={{ paddingBottom: insets.bottom + 20, paddingTop: 20 }}
         >
-          <View className="bg-white/90 backdrop-blur-sm rounded-lg p-4 mb-4">
-            <TextArea
-              value={localPreferences}
-              onChangeText={setLocalPreferences}
-              placeholder="Any personal preferences?&#10;Eg. Stories about the temple's history"
-              rows={3}
-              maxRows={6}
-              autoGrow
-              className="bg-transparent border-0 p-0 text-gray-900"
-            />
-          </View>
-
           {/* Action Buttons */}
-          <View className="flex-row space-x-3">
+          <View className="flex-row gap-4 px-6">
             <View className="flex-1">
               <Button
                 title="Retake"
-                variant="secondary"
+                variant="outline"
+                size="large"
                 onPress={handleRetake}
-                className="bg-black/50 border-white/20"
+                className="border-white/60 bg-white/10"
               />
             </View>
             <View className="flex-1">
               <Button
                 title={loading ? "Generating Tour..." : "Generate Tour"}
                 variant="primary"
+                size="large"
                 onPress={handleUsePhoto}
                 disabled={loading}
-                className="bg-blue-500"
+                loading={loading}
               />
             </View>
           </View>

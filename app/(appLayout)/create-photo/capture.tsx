@@ -4,6 +4,7 @@ import { Stack, useRouter } from 'expo-router';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
+import { reverseGeocodeWithCache } from '../../../src/lib/geocoding';
 import { FontAwesome } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -34,7 +35,7 @@ export default function CapturePhotoScreen() {
     if (locationPermission && !locationFetched && locationLabel === '') {
       getCurrentLocation();
     }
-  }, [locationPermission, locationFetched, locationLabel]);
+  }, [locationPermission, locationFetched]);
 
   const requestLocationPermission = async () => {
     // Prevent multiple permission requests
@@ -42,24 +43,19 @@ export default function CapturePhotoScreen() {
       return;
     }
     
-    console.log('[CapturePhoto] Requesting location permission...');
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
-      console.log('[CapturePhoto] Location permission status:', status);
       setLocationPermission(status === 'granted');
     } catch (error) {
-      console.error('[CapturePhoto] Failed to request location permission:', error);
       setLocationPermission(false);
     }
   };
 
   const getCurrentLocation = async () => {
     if (!locationPermission || locationFetched || locationLabel !== '') {
-      console.log('[CapturePhoto] Skipping location fetch - permission:', locationPermission, 'fetched:', locationFetched, 'label:', locationLabel);
       return;
     }
 
-    console.log('[CapturePhoto] Getting current location...');
     try {
       setLocationFetched(true);
       const location = await Location.getCurrentPositionAsync({
@@ -68,51 +64,35 @@ export default function CapturePhotoScreen() {
         distanceInterval: 10
       });
       const { latitude, longitude } = location.coords;
-      console.log('[CapturePhoto] Location coordinates:', latitude, longitude);
       
-      const addresses = await Location.reverseGeocodeAsync({ latitude, longitude });
-      console.log('[CapturePhoto] Reverse geocode results:', addresses);
+      // 使用带缓存和重试的地理编码
+      const formattedAddress = await reverseGeocodeWithCache(latitude, longitude, {
+        maxRetries: 2,
+        retryDelay: 1500,
+        fallbackToCoordinates: true
+      });
       
-      if (addresses.length > 0) {
-        const address = addresses[0];
-        const formattedAddress = [
-          address.name,
-          address.street,
-          address.city,
-          address.region
-        ].filter(Boolean).join(', ') || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
-        
-        console.log('[CapturePhoto] Formatted address:', formattedAddress);
-        setLocationLabel(formattedAddress);
-      } else {
-        console.warn('[CapturePhoto] No addresses found for coordinates');
-        setLocationLabel(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
-      }
+      setLocationLabel(formattedAddress);
     } catch (error) {
-      console.error('[CapturePhoto] Failed to get location:', error);
       setLocationLabel('Location unavailable');
       setLocationFetched(true); // Mark as fetched even on error to prevent retries
     }
   };
 
   const handleClose = () => {
-    console.log('[CapturePhoto] User closed camera screen');
     router.dismiss();
   };
 
   const handleFlipCamera = () => {
     const newType = cameraType === 'back' ? 'front' : 'back';
-    console.log('[CapturePhoto] Flipping camera from', cameraType, 'to', newType);
     setCameraType(newType);
   };
 
   const handleTakePhoto = async () => {
     if (!cameraRef.current || isCapturing) {
-      console.log('[CapturePhoto] Cannot take photo - camera ref:', !!cameraRef.current, 'capturing:', isCapturing);
       return;
     }
 
-    console.log('[CapturePhoto] Taking photo...');
     try {
       setIsCapturing(true);
       
@@ -121,17 +101,13 @@ export default function CapturePhotoScreen() {
         base64: false,
       });
 
-      console.log('[CapturePhoto] Photo captured:', photo?.uri);
       if (photo?.uri) {
         setPhotoUri(photo.uri);
-        console.log('[CapturePhoto] Navigating to confirm screen');
         router.push('/create-photo/confirm');
       } else {
-        console.warn('[CapturePhoto] Photo capture returned no URI');
         Alert.alert('Error', 'Failed to capture photo. Please try again.');
       }
     } catch (error) {
-      console.error('[CapturePhoto] Failed to take photo:', error);
       Alert.alert('Error', 'Failed to capture photo. Please try again.');
     } finally {
       setIsCapturing(false);
@@ -139,7 +115,6 @@ export default function CapturePhotoScreen() {
   };
 
   const handleChooseFromLibrary = async () => {
-    console.log('[CapturePhoto] Opening image library...');
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
@@ -148,17 +123,11 @@ export default function CapturePhotoScreen() {
         quality: 0.8,
       });
 
-      console.log('[CapturePhoto] Image picker result:', result);
       if (!result.canceled && result.assets[0]) {
-        console.log('[CapturePhoto] Photo selected:', result.assets[0].uri);
         setPhotoUri(result.assets[0].uri);
-        console.log('[CapturePhoto] Navigating to confirm screen');
         router.push('/create-photo/confirm');
-      } else {
-        console.log('[CapturePhoto] User cancelled image selection');
       }
     } catch (error) {
-      console.error('[CapturePhoto] Failed to select photo:', error);
       Alert.alert('Error', 'Failed to select photo. Please try again.');
     }
   };
