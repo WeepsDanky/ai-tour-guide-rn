@@ -185,8 +185,7 @@ export async function getMyTravelogues(): Promise<PaginatedResponse<TravelogueSu
  * @returns A promise that resolves to paginated travelogue summaries
  */
 export async function getCommunityTravelogues(page = 1, size = 10): Promise<PaginatedResponse<TravelogueDetail>> {
-  console.log('[TravelogueService] Fetching community travelogues...', { page, size });
-  
+ 
   try {
     const response = await fetcher<R<PaginatedResponse<TravelogueDetail>>>(`/travelogue/community?page=${page}&size=${size}`);
     console.log('[TravelogueService] Community travelogues fetched successfully:', response);

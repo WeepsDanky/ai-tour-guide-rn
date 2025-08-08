@@ -65,8 +65,27 @@ export default function ChatBubble({ message }: ChatBubbleProps) {
 
   // AI message
   return (
-    <View className="mx-4 my-2 flex-row justify-start">
-      <View className="bg-gray-100 rounded-lg p-3 max-w-xs">
+    <View 
+      className="mx-4 my-2 flex-row justify-start" 
+      style={{ 
+        borderWidth: 5, 
+        borderColor: 'red', 
+        backgroundColor: 'yellow',
+        minHeight: 80,
+        padding: 10
+      }}
+    >
+      <View 
+        className="bg-gray-100 rounded-lg p-3 max-w-xs" 
+        style={{ 
+          borderWidth: 3, 
+          borderColor: 'blue', 
+          backgroundColor: 'lightgreen',
+          minHeight: 60,
+          minWidth: 200,
+          flex: 1
+        }}
+      >
         {/* AI Avatar */}
         <View className="flex-row items-start">
           <View className="w-6 h-6 bg-blue-500 rounded-full mr-2 mt-1 items-center justify-center">
@@ -74,8 +93,21 @@ export default function ChatBubble({ message }: ChatBubbleProps) {
           </View>
           <View className="flex-1">
             {message.text && (
-              <Text className="text-gray-800 text-sm leading-5">
+              <Text 
+                className="text-gray-800 text-sm leading-5" 
+                style={{ 
+                  color: 'black', 
+                  fontWeight: 'bold',
+                  fontSize: 16,
+                  lineHeight: 24
+                }}
+              >
                 {message.text}
+              </Text>
+            )}
+            {!message.text && (
+              <Text style={{ color: 'red', fontWeight: 'bold', fontSize: 16 }}>
+                [DEBUG: NO TEXT CONTENT]
               </Text>
             )}
           </View>
