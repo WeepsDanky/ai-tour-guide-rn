@@ -34,7 +34,7 @@ export default function CapturePhotoScreen() {
     if (locationPermission && !locationFetched && locationLabel === '') {
       getCurrentLocation();
     }
-  }, [locationPermission, locationLabel]);
+  }, [locationPermission, locationFetched, locationLabel]);
 
   const requestLocationPermission = async () => {
     // Prevent multiple permission requests

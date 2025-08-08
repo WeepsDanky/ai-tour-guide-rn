@@ -19,7 +19,7 @@ import type { TourDataResponse } from '@/types';
 
 export interface ChatMessage {
   id: string;
-  type: 'ai' | 'user' | 'tour_summary';
+  type: 'ai' | 'user' | 'tour_summary' | 'tour_segments';
   text?: string;
   image?: string;
   status?: 'done' | 'loading' | 'progress';

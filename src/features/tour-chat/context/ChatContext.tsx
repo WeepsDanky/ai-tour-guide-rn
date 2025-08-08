@@ -57,10 +57,19 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         timestamp: new Date(),
       };
 
-      // 移除进度条消息，并添加摘要消息
+      // 创建一条地点详情消息
+      const segmentsMessage: ChatMessage = {
+        id: `segments-${tourUid}`,
+        type: 'tour_segments',
+        tourData: finalTourData,
+        timestamp: new Date(),
+      };
+
+      // 移除进度条消息，并添加摘要消息和地点详情消息
       setMessages(prev => [
         ...prev.filter(msg => msg.id !== progressMsgId),
         summaryMessage,
+        segmentsMessage,
       ]);
 
     } catch (error) {

@@ -12,15 +12,19 @@ export default function CurrentLocationCard({ onLocationPress }: CurrentLocation
   const [coordinates, setCoordinates] = useState<{ lat: number; lng: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [hasFetched, setHasFetched] = useState(false);
 
   useEffect(() => {
-    getCurrentLocation();
-  }, []);
+    if (!hasFetched) {
+      getCurrentLocation();
+    }
+  }, [hasFetched]);
 
   const getCurrentLocation = async () => {
     try {
       setLoading(true);
       setError(null);
+      setHasFetched(true);
       
       // 请求位置权限
       const { status } = await Location.requestForegroundPermissionsAsync();
@@ -69,6 +73,7 @@ export default function CurrentLocationCard({ onLocationPress }: CurrentLocation
   };
 
   const handleRefresh = () => {
+    setHasFetched(false);
     getCurrentLocation();
   };
 
