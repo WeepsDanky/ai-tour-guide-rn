@@ -1,8 +1,14 @@
 import { View, Text, Image, ActivityIndicator } from 'react-native';
 import { ChatBubbleProps } from '../types';
 import { ProgressIndicator } from '@/ui/atoms/ProgressIndicator';
+import TourSummaryCard from './TourSummaryCard';
 
 export default function ChatBubble({ message }: ChatBubbleProps) {
+  // Tour summary message
+  if (message.type === 'tour_summary' && message.tourData) {
+    return <TourSummaryCard tourData={message.tourData} />;
+  }
+
   // Loading state
   if (message.status === 'loading') {
     return (

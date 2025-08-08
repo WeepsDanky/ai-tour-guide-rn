@@ -36,9 +36,11 @@ export const fetchCommunityPosts = async (page = 1, size = 10): Promise<Paginate
     const response = { ...uidResponse, content: details };
     */
 
+    // 确保数据存在再进行映射
+    const items = response.items || response.content || [];
     return {
       ...response,
-      content: response.content.map(mapTravelogueToPost),
+      content: items.map(mapTravelogueToPost),
     };
   } catch (error) {
     console.error('Failed to fetch community posts:', error);

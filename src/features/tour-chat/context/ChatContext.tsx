@@ -14,8 +14,16 @@ interface ChatContextType {
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
+const initialWelcomeMessage: ChatMessage = {
+  id: 'welcome-message',
+  type: 'ai',
+  text: '你好！准备好开始新的探索了吗？请通过下方的相机按钮拍摄或选择一张照片，我将为你生成一段专属的语音导览。',
+  status: 'done',
+  timestamp: new Date(),
+};
+
 export function ChatProvider({ children }: { children: ReactNode }) {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([initialWelcomeMessage]);
   const router = useRouter();
 
   const getStatusMessage = (status: string): string => {
@@ -38,29 +46,25 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       // 获取最终的 tour 数据
       const finalTourData = await getTourByUid(tourUid);
       if (!finalTourData) {
-        throw new Error('Failed to retrieve final tour data.');
+        throw new Error('未能获取最终的游览数据。');
       }
 
-      // 更新 UI 提示
-      setMessages(prev => 
-        prev.map(msg => 
-          msg.id === progressMsgId 
-            ? { ...msg, status: 'done', text: '🎉 游览路线生成完成！即将跳转...' }
-            : msg
-        )
-      );
+      // 创建一条新的游览摘要消息
+      const summaryMessage: ChatMessage = {
+        id: `tour-${tourUid}`,
+        type: 'tour_summary',
+        tourData: finalTourData,
+        timestamp: new Date(),
+      };
 
-      // 导航到地图/播放器页面，并将 tour 数据作为参数传递
-      router.push({
-        pathname: '/(appLayout)/(map)/map',
-        params: {
-          tourData: JSON.stringify(finalTourData),
-          tourId: finalTourData.tourUid
-        },
-      });
+      // 移除进度条消息，并添加摘要消息
+      setMessages(prev => [
+        ...prev.filter(msg => msg.id !== progressMsgId),
+        summaryMessage,
+      ]);
 
     } catch (error) {
-      console.error('[ChatContext] Failed to handle tour completion:', error);
+      console.error('[ChatContext] 处理游览完成时失败:', error);
       setMessages(prev => 
         prev.map(msg => 
           msg.id === progressMsgId 

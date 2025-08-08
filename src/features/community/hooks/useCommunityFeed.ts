@@ -17,14 +17,18 @@ export const useCommunityFeed = () => {
       const response = await fetchCommunityPosts(page);
       
       // 使用函数式更新，避免依赖旧的 posts 状态
-      setPosts(prevPosts => [...prevPosts, ...response.content]);
+      // 后端返回的数据结构是 items 而不是 content
+      const newPosts = response.items || response.content || [];
+      setPosts(prevPosts => [...prevPosts, ...newPosts]);
       
       // 更新分页信息
       setPage(prevPage => prevPage + 1);
-      setHasMore(!response.last); // 后端返回 last 字段表示是否是最后一页
+      setHasMore(response.hasNext !== false); // 后端返回 hasNext 字段表示是否还有下一页
     } catch (error) {
-      console.error("Failed to load community feed:", error);
-      // 可以在这里设置错误状态
+      console.error("Failed to fetch community posts:", error);
+      // 设置空数组以避免崩溃
+      setPosts([]);
+      setHasMore(false);
     } finally {
       setLoading(false);
     }

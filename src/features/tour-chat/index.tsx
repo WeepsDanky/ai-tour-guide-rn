@@ -1,29 +1,27 @@
 import { View, FlatList, SafeAreaView } from 'react-native';
-import { usePOIData } from './hooks/usePOIData';
 import { useChat } from './hooks/useChat';
-import POICard from './components/POICard';
-import RecommendedRoutes from './components/RecommendedRoutes';
 import ChatBubble from './components/ChatBubble';
 import ChatInput from './components/ChatInput';
+import CurrentLocationCard from './components/CurrentLocationCard';
 
 export default function TourChatScreen() {
-  const { poi, loading } = usePOIData('static-or-last-recognised');
-  const { messages, sendPhoto } = useChat([]);
+  const { messages, sendPhoto } = useChat();
+
+  // Check if there are any chat messages beyond the welcome message
+  const hasRealMessages = messages.length > 1 || (messages.length === 1 && messages[0].id !== 'welcome-message');
 
   // Prepare data for FlatList
   const data = [
-    { key: 'poi', type: 'poi' },
-    { key: 'routes', type: 'routes' },
+    // Show current location when there are no real messages (only welcome message or empty)
+    ...(hasRealMessages ? [] : [{ key: 'current-location', type: 'current-location' }]),
     ...messages.map(m => ({ key: m.id, type: 'msg', msg: m }))
   ];
 
   const renderItem = ({ item }: any) => {
-    if (item.type === 'poi') {
-      return <POICard poi={poi} />;
+    if (item.type === 'current-location') {
+      return <CurrentLocationCard />;
     }
-    if (item.type === 'routes') {
-      return poi ? <RecommendedRoutes routes={poi.routes} /> : null;
-    }
+    // Now only render chat messages
     return <ChatBubble message={item.msg} />;
   };
 

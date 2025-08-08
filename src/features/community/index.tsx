@@ -69,8 +69,8 @@ export default function CommunityScreen() {
               onPress={handlePostPress}
             />
           )}
-          ListFooterComponent={renderFooter}
-          ListEmptyComponent={renderEmpty}
+          ListFooterComponent={renderFooter()}
+          ListEmptyComponent={renderEmpty()}
           showsVerticalScrollIndicator={false}
         />
       </View>

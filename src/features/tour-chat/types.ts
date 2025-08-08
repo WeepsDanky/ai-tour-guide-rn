@@ -15,15 +15,18 @@ export interface RouteSuggestion {
   highlights: string[];
 }
 
+import type { TourDataResponse } from '@/types';
+
 export interface ChatMessage {
   id: string;
-  type: 'ai' | 'user';
+  type: 'ai' | 'user' | 'tour_summary';
   text?: string;
   image?: string;
   status?: 'done' | 'loading' | 'progress';
   progress?: number;
   progressText?: string;
   timestamp: Date;
+  tourData?: TourDataResponse;
 }
 
 export interface ChatInputProps {
