@@ -34,13 +34,18 @@ export default function CapturePhotoScreen() {
     if (locationPermission && !locationFetched && locationLabel === '') {
       getCurrentLocation();
     }
-  }, [locationPermission, locationFetched]);
+  }, [locationPermission, locationLabel]);
 
   const requestLocationPermission = async () => {
+    // Prevent multiple permission requests
+    if (locationPermission !== null) {
+      return;
+    }
+    
     console.log('[CapturePhoto] Requesting location permission...');
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
-      // console.log('[CapturePhoto] Location permission status:', status);
+      console.log('[CapturePhoto] Location permission status:', status);
       setLocationPermission(status === 'granted');
     } catch (error) {
       console.error('[CapturePhoto] Failed to request location permission:', error);
@@ -49,15 +54,19 @@ export default function CapturePhotoScreen() {
   };
 
   const getCurrentLocation = async () => {
-    if (!locationPermission || locationFetched) {
-      console.log('[CapturePhoto] Skipping location fetch - permission:', locationPermission, 'fetched:', locationFetched);
+    if (!locationPermission || locationFetched || locationLabel !== '') {
+      console.log('[CapturePhoto] Skipping location fetch - permission:', locationPermission, 'fetched:', locationFetched, 'label:', locationLabel);
       return;
     }
 
     console.log('[CapturePhoto] Getting current location...');
     try {
       setLocationFetched(true);
-      const location = await Location.getCurrentPositionAsync({});
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+        timeInterval: 10000,
+        distanceInterval: 10
+      });
       const { latitude, longitude } = location.coords;
       console.log('[CapturePhoto] Location coordinates:', latitude, longitude);
       
@@ -82,6 +91,7 @@ export default function CapturePhotoScreen() {
     } catch (error) {
       console.error('[CapturePhoto] Failed to get location:', error);
       setLocationLabel('Location unavailable');
+      setLocationFetched(true); // Mark as fetched even on error to prevent retries
     }
   };
 
