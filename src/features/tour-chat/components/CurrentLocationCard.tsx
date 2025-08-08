@@ -137,7 +137,6 @@ export default function CurrentLocationCard({ onLocationPress }: CurrentLocation
           >
             <FontAwesome name="refresh" size={14} color="#6B7280" />
           </Pressable>
-          <FontAwesome name="chevron-right" size={14} color="#9CA3AF" />
         </View>
       </View>
     </Pressable>
