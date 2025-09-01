@@ -18,7 +18,14 @@
         }
       ],
       "expo-web-browser",
-      "expo-font"
+      "expo-font", 
+      [
+        "react-native-vision-camera",
+          {
+            "cameraPermissionText": "$(PRODUCT_NAME) needs access to your Camera.",
+            "microphonePermissionText": "$(PRODUCT_NAME) needs access to your Microphone for audio recording."
+          }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
@@ -39,7 +46,9 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.lahuse.aitourguide",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false, 
+        "NSCameraUsageDescription": "$(PRODUCT_NAME) needs access to your Camera to identify landmarks.",
+        "NSMicrophoneUsageDescription": "$(PRODUCT_NAME) needs access to your Microphone. This is required by the camera library but is not used for recording."
       }
     },
     "android": {
