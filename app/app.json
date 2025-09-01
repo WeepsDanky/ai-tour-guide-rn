@@ -18,13 +18,14 @@
         }
       ],
       "expo-web-browser",
-      "expo-font", 
+      "expo-font",
+      "expo-location",
       [
         "react-native-vision-camera",
-          {
-            "cameraPermissionText": "$(PRODUCT_NAME) needs access to your Camera.",
-            "microphonePermissionText": "$(PRODUCT_NAME) needs access to your Microphone for audio recording."
-          }
+        {
+          "cameraPermissionText": "$(PRODUCT_NAME) needs access to your Camera.",
+          "microphonePermissionText": "$(PRODUCT_NAME) needs access to your Microphone for audio recording."
+        }
       ]
     ],
     "experiments": {
@@ -46,16 +47,26 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.lahuse.aitourguide",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false, 
-        "NSCameraUsageDescription": "$(PRODUCT_NAME) needs access to your Camera to identify landmarks.",
-        "NSMicrophoneUsageDescription": "$(PRODUCT_NAME) needs access to your Microphone. This is required by the camera library but is not used for recording."
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "$(PRODUCT_NAME) needs access to your Camera.",
+        "NSMicrophoneUsageDescription": "$(PRODUCT_NAME) needs access to your Microphone. This is required by the camera library but is not used for recording.",
+        "NSLocationWhenInUseUsageDescription": "$(PRODUCT_NAME) needs access to your location to provide context-aware landmark information and enhance your tour guide experience."
       }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.CAMERA",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.CAMERA"
+      ],
+      "package": "com.lahuse.aitourguide"
     },
     "extra": {
       "router": {},
