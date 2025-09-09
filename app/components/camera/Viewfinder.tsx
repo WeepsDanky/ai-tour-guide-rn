@@ -59,7 +59,7 @@ export function Viewfinder({ identifyResult, isIdentifying, onFramePress }: View
 
   const shouldShowResult = identifyResult && identifyResult.confidence >= 0.6;
   const borderColor = isIdentifying 
-    ? tokens.colors.accent.building 
+    ? tokens.colors.accent.history 
     : shouldShowResult 
     ? tokens.colors.semantic.success 
     : tokens.colors.border.recognition;

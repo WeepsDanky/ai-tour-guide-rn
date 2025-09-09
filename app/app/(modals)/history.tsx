@@ -29,7 +29,6 @@ export default function HistoryModal() {
   } = useHistoryStore();
   
   const [refreshing, setRefreshing] = useState(false);
-  const [historyStorage] = useState(() => new HistoryStorage());
   
   // 底部抽屉的快照点（屏幕高度的56%）
   const snapPoints = React.useMemo(() => ['56%'], []);
@@ -38,7 +37,7 @@ export default function HistoryModal() {
   const loadHistoryData = useCallback(async () => {
     try {
       setLoading(true);
-      const historyItems = await historyStorage.getItems();
+      const historyItems = await HistoryStorage.getHistory();
       setItems(historyItems);
     } catch (error) {
       console.error('Failed to load history:', error);
@@ -46,7 +45,7 @@ export default function HistoryModal() {
     } finally {
       setLoading(false);
     }
-  }, [historyStorage, setLoading, setItems]);
+  }, [setLoading, setItems]);
   
   // 刷新历史数据
   const handleRefresh = useCallback(async () => {
@@ -88,7 +87,7 @@ export default function HistoryModal() {
       params: {
         guideId: item.id,
         isReplay: 'true',
-        imageUri: item.coverPath,
+        imageUri: item.coverImage,
       },
     });
   };
@@ -99,7 +98,7 @@ export default function HistoryModal() {
     
     const options = [
       {
-        text: item.isFavorited ? '取消收藏' : '收藏',
+        text: item.isFavorite ? '取消收藏' : '收藏',
         onPress: () => handleFavoriteToggle(item),
       },
       {
@@ -123,11 +122,11 @@ export default function HistoryModal() {
   // 处理收藏切换
   const handleFavoriteToggle = async (item: HistoryItem) => {
     try {
-      await historyStorage.toggleFavorite(item.id);
+      await HistoryStorage.toggleFavorite(item.id);
       toggleFavorite(item.id);
       
       Haptics.notificationAsync(
-        item.isFavorited 
+        item.isFavorite 
           ? Haptics.NotificationFeedbackType.Warning
           : Haptics.NotificationFeedbackType.Success
       );
@@ -152,7 +151,7 @@ export default function HistoryModal() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await historyStorage.removeItem(item.id);
+              await HistoryStorage.removeHistoryItem(item.id);
               removeItem(item.id);
               
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);

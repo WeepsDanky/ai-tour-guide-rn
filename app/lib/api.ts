@@ -107,18 +107,18 @@ class ApiClient {
       }
       
       return data as T;
-    } catch (error) {
+    } catch (error: any) {
       clearTimeout(timeoutId);
       
       if (error instanceof ApiError) {
         throw error;
       }
       
-      if (error && error.name === 'AbortError') {
+      if (error && (error as any).name === 'AbortError') {
         throw new ApiError('Request timeout', 408, 'TIMEOUT');
       }
       
-      const errorMessage = error && error.message ? error.message : 'Unknown network error';
+      const errorMessage = error && (error as any).message ? (error as any).message : 'Unknown network error';
       throw new ApiError(
         `Network error: ${errorMessage}`,
         0,
@@ -163,7 +163,7 @@ async function withRetry<T>(
   retryCount: number = API_CONFIG.RETRY_COUNT,
   delay: number = API_CONFIG.RETRY_DELAY
 ): Promise<T> {
-  let lastError: Error;
+  let lastError: unknown = new Error('unknown');
 
   for (let attempt = 1; attempt <= retryCount; attempt++) {
     try {
@@ -186,7 +186,7 @@ async function withRetry<T>(
     }
   }
 
-  throw lastError;
+  throw lastError as Error;
 }
 
 /**
@@ -262,7 +262,7 @@ export class ConfigApi {
 }
 
 // 导出API客户端和错误类
-export { apiClient, ApiError };
+export { apiClient };
 export default {
   identify: IdentifyApi,
   health: HealthApi,

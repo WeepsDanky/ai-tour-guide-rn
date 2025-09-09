@@ -19,8 +19,9 @@ export function HistoryCard({
 }: HistoryCardProps) {
   
   // 格式化时间显示
-  const formatTime = (date: Date) => {
+  const formatTime = (timestampMs: number) => {
     const now = new Date();
+    const date = new Date(timestampMs);
     const diffMs = now.getTime() - date.getTime();
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
@@ -49,7 +50,7 @@ export function HistoryCard({
       return null;
     }
     
-    let color = tokens.colors.semantic.error;
+    let color: string = tokens.colors.semantic.error;
     if (item.confidence >= 0.8) {
       color = tokens.colors.semantic.success;
     } else if (item.confidence >= 0.6) {
@@ -67,10 +68,10 @@ export function HistoryCard({
   
   // 渲染封面图片
   const renderCover = () => {
-    if (item.coverPath) {
+    if (item.coverImage) {
       return (
         <Image 
-          source={{ uri: item.coverPath }} 
+          source={{ uri: item.coverImage }} 
           style={styles.coverImage}
           resizeMode="cover"
         />
@@ -106,9 +107,9 @@ export function HistoryCard({
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
           <Ionicons 
-            name={item.isFavorited ? "heart" : "heart-outline"} 
+            name={item.isFavorite ? "heart" : "heart-outline"} 
             size={20} 
-            color={item.isFavorited ? tokens.colors.semantic.error : tokens.colors.text} 
+            color={item.isFavorite ? tokens.colors.semantic.error : tokens.colors.text} 
           />
         </TouchableOpacity>
         
@@ -123,36 +124,11 @@ export function HistoryCard({
           {item.title}
         </Text>
         
-        {/* 三要点 */}
-        {item.keyPoints && item.keyPoints.length > 0 && (
-          <View style={styles.keyPointsContainer}>
-            {item.keyPoints.slice(0, 3).map((point, index) => (
-              <View key={index} style={styles.keyPointItem}>
-                <View style={styles.keyPointDot} />
-                <Text style={styles.keyPointText} numberOfLines={1}>
-                  {point}
-                </Text>
-              </View>
-            ))}
-          </View>
-        )}
-        
         {/* 底部信息 */}
         <View style={styles.footerContainer}>
           <Text style={styles.timeText}>
-            {formatTime(item.createdAt)}
+            {formatTime(item.timestamp)}
           </Text>
-          
-          {/* 标签 */}
-          {item.tags && item.tags.length > 0 && (
-            <View style={styles.tagsContainer}>
-              {item.tags.slice(0, 2).map((tag, index) => (
-                <View key={index} style={styles.tag}>
-                  <Text style={styles.tagText}>{tag}</Text>
-                </View>
-              ))}
-            </View>
-          )}
         </View>
       </View>
     </TouchableOpacity>

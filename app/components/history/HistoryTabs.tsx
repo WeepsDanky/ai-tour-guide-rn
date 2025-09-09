@@ -13,17 +13,16 @@ interface TabConfig {
 
 export function HistoryTabs() {
   const { 
-    currentTag, 
-    setCurrentTag, 
+    activeTab,
+    setActiveTab,
     items,
-    filteredItems,
-    recentItems 
+    getRecentItems,
   } = useHistoryStore();
   
   // 计算各标签的数量
   const allCount = items.length;
-  const favoritesCount = filteredItems('favorites').length;
-  const recentCount = recentItems(20).length;
+  const favoritesCount = items.filter(item => item.isFavorite).length;
+  const recentCount = getRecentItems(20).length;
   
   // 标签配置
   const tabs: TabConfig[] = [
@@ -46,14 +45,14 @@ export function HistoryTabs() {
   
   // 处理标签切换
   const handleTabPress = (tabKey: HistoryTab) => {
-    if (tabKey !== currentTag) {
-      setCurrentTag(tabKey);
+    if (tabKey !== activeTab) {
+      setActiveTab(tabKey);
     }
   };
   
   // 渲染单个标签
   const renderTab = (tab: TabConfig) => {
-    const isActive = currentTag === tab.key;
+    const isActive = activeTab === tab.key;
     
     return (
       <TouchableOpacity

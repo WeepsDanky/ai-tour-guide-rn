@@ -74,7 +74,7 @@ class Storage {
    */
   async getAllKeys(): Promise<string[]> {
     try {
-      return await AsyncStorage.getAllKeys();
+      return (await AsyncStorage.getAllKeys()) as string[];
     } catch (error) {
       console.error('Failed to get all keys:', error);
       return [];

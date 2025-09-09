@@ -140,7 +140,7 @@ export interface PlaybackState {
 }
 
 // 卡片类型
-export type CardType = 'what' | 'components' | 'timeline' | 'reading' | 'sources';
+export type CardType = 'what' | 'components' | 'timeline' | 'reading' | 'sources' | 'people';
 
 export interface GuideCard {
   type: CardType;

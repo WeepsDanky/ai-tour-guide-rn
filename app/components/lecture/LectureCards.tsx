@@ -20,16 +20,14 @@ export function LectureCards({ cards, onCardPress }: LectureCardsProps) {
   
   // 渲染卡片图标
   const renderCardIcon = (type: CardType) => {
-    const iconMap = {
+    const iconMap: Record<string, any> = {
       what: 'information-circle',
-      why: 'help-circle',
-      so_what: 'bulb',
       components: 'construct',
       timeline: 'time',
       people: 'people',
       reading: 'book',
       sources: 'library',
-    } as const;
+    };
     
     return (
       <Ionicons 
@@ -42,10 +40,8 @@ export function LectureCards({ cards, onCardPress }: LectureCardsProps) {
   
   // 渲染卡片标题
   const renderCardTitle = (type: CardType) => {
-    const titleMap = {
+    const titleMap: Record<string, string> = {
       what: 'What / Why / So-what',
-      why: 'Why',
-      so_what: 'So What',
       components: '构件标注',
       timeline: '时间线',
       people: '人物关系',
@@ -176,10 +172,12 @@ export function LectureCards({ cards, onCardPress }: LectureCardsProps) {
     return (
       <View style={styles.cardContent}>
         {content?.items?.map((item: any, index: number) => (
-          <View key={index} style={styles.readingItem}>
-            <Text style={styles.readingTitle}>{item?.title || '未知标题'}</Text>
-            <Text style={styles.readingAuthor}>作者：{item?.author || '未知作者'}</Text>
-            <Text style={styles.readingDescription}>{item?.description || '暂无描述'}</Text>
+          <View key={index} style={styles.linkItem}>
+            <View style={styles.linkHeader}>
+              <Ionicons name="book" size={16} color={tokens.colors.accent.architecture} />
+              <Text style={styles.linkTitle}>{item?.title || '未知标题'}</Text>
+            </View>
+            <Text style={styles.linkDescription}>{item?.description || '暂无描述'}</Text>
           </View>
         )) || <Text style={styles.sectionText}>暂无阅读资料</Text>}
       </View>

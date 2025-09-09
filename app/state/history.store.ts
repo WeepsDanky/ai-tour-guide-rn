@@ -6,7 +6,7 @@ interface HistoryState {
   items: HistoryItem[];
   
   // 当前选中的标签
-  activeTab: 'all' | 'favorites';
+  activeTab: 'all' | 'favorites' | 'recent';
   
   // 加载状态
   isLoading: boolean;
@@ -15,7 +15,7 @@ interface HistoryState {
   addItem: (item: HistoryItem) => void;
   removeItem: (id: string) => void;
   toggleFavorite: (id: string) => void;
-  setActiveTab: (tab: 'all' | 'favorites') => void;
+  setActiveTab: (tab: 'all' | 'favorites' | 'recent') => void;
   setItems: (items: HistoryItem[]) => void;
   setLoading: (loading: boolean) => void;
   getFilteredItems: () => HistoryItem[];

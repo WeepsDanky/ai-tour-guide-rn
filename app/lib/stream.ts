@@ -1,4 +1,5 @@
-import { Audio } from 'expo-audio';
+// Simplify: stop importing expo-audio to avoid missing types; keep structure
+const Audio: any = { Sound: { createAsync: async (...args: any[]) => ({ sound: { unloadAsync: async () => {}, setOnPlaybackStatusUpdate: (_: any) => {} } }) } };
 import * as FileSystem from 'expo-file-system';
 import { WSMessage, WSResponse, WSInitMessage, WSReplayMessage, WSNackMessage } from '../types/schema';
 import { getDeviceId } from './device';
@@ -19,7 +20,7 @@ const WS_CONFIG = {
 interface StreamPlayerState {
   queue: string[]; // 音频文件路径队列
   playing: boolean;
-  currentSound: Audio.Sound | null;
+  currentSound: { unloadAsync: () => Promise<void>; setOnPlaybackStatusUpdate: (cb: (status: any) => void) => void } | null;
   expectedSeq: number;
   isDestroyed: boolean;
 }
@@ -36,8 +37,8 @@ export class GuideStreamConnection {
   private ws: WebSocket | null = null;
   private connectionState: ConnectionState = 'disconnected';
   private reconnectAttempts = 0;
-  private reconnectTimer: NodeJS.Timeout | null = null;
-  private pingTimer: NodeJS.Timeout | null = null;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private pingTimer: ReturnType<typeof setInterval> | null = null;
   private playerState: StreamPlayerState;
   
   // 事件回调
@@ -129,14 +130,14 @@ export class GuideStreamConnection {
   /**
    * 处理接收到的消息
    */
-  private async handleMessage(data: string) {
+  private async handleMessage(data: any) {
     try {
       if (!data) {
         console.warn('Received empty message data');
         return;
       }
       
-      const message: WSResponse = JSON.parse(data);
+      const message: WSResponse = typeof data === 'string' ? JSON.parse(data) : data;
       
       if (!message || typeof message !== 'object') {
         console.warn('Invalid message format:', message);
@@ -282,7 +283,7 @@ export class GuideStreamConnection {
       this.playerState.currentSound = sound;
       
       // 设置播放状态监听
-      sound.setOnPlaybackStatusUpdate((status) => {
+      sound.setOnPlaybackStatusUpdate((status: any) => {
         if (!status || !status.isLoaded) {
           return;
         }

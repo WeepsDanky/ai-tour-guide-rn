@@ -1,12 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { Audio } from 'expo-audio';
 import { Ionicons } from '@expo/vector-icons';
 import { tokens } from '../../lib/tokens';
-import { PlayerState } from '../../types/schema';
 
 interface AudioPlayerProps {
-  playerState: PlayerState;
+  playerState: {
+    isPlaying: boolean;
+    currentPosition: number;
+    duration: number;
+    isLoading: boolean;
+  };
   onPlayPause: () => void;
   onSeek: (position: number) => void;
   onSpeedChange: (speed: number) => void;
@@ -44,8 +47,8 @@ export function AudioPlayer({
   const handleSeek = (direction: 'forward' | 'backward') => {
     const seekAmount = 10000; // 10秒
     const newPosition = direction === 'forward' 
-      ? Math.min(playerState.position + seekAmount, playerState.duration)
-      : Math.max(playerState.position - seekAmount, 0);
+      ? Math.min(playerState.currentPosition + seekAmount, playerState.duration)
+      : Math.max(playerState.currentPosition - seekAmount, 0);
     onSeek(newPosition);
   };
   
@@ -58,7 +61,7 @@ export function AudioPlayer({
   
   // 计算进度百分比
   const progressPercentage = playerState.duration > 0 
-    ? (playerState.position / playerState.duration) * 100 
+    ? (playerState.currentPosition / playerState.duration) * 100 
     : 0;
   
   return (
@@ -105,7 +108,7 @@ export function AudioPlayer({
         </View>
         <View style={styles.timeContainer}>
           <Text style={styles.timeText}>
-            {formatTime(playerState.position)}
+            {formatTime(playerState.currentPosition)}
           </Text>
           <Text style={styles.timeText}>
             {formatTime(playerState.duration)}
@@ -119,12 +122,12 @@ export function AudioPlayer({
         <TouchableOpacity
           style={styles.controlButton}
           onPress={() => handleSeek('backward')}
-          disabled={playerState.position <= 0}
+          disabled={playerState.currentPosition <= 0}
         >
           <Ionicons 
             name="play-back" 
             size={24} 
-            color={playerState.position <= 0 ? tokens.colors.text : tokens.colors.text} 
+            color={playerState.currentPosition <= 0 ? tokens.colors.text : tokens.colors.text} 
           />
           <Text style={styles.seekLabel}>10s</Text>
         </TouchableOpacity>
@@ -133,7 +136,7 @@ export function AudioPlayer({
         <TouchableOpacity
           style={[styles.controlButton, styles.playButton]}
           onPress={handlePlayPause}
-          disabled={!playerState.isLoaded}
+          disabled={playerState.isLoading}
         >
           <Ionicons 
             name={playerState.isPlaying ? "pause" : "play"} 
@@ -146,12 +149,12 @@ export function AudioPlayer({
         <TouchableOpacity
           style={styles.controlButton}
           onPress={() => handleSeek('forward')}
-          disabled={playerState.position >= playerState.duration}
+          disabled={playerState.currentPosition >= playerState.duration}
         >
           <Ionicons 
             name="play-forward" 
             size={24} 
-            color={playerState.position >= playerState.duration ? tokens.colors.text : tokens.colors.text} 
+            color={playerState.currentPosition >= playerState.duration ? tokens.colors.text : tokens.colors.text} 
           />
           <Text style={styles.seekLabel}>10s</Text>
         </TouchableOpacity>

@@ -130,7 +130,7 @@ export function ShutterButton({ onPress, disabled = false, isCapturing = false }
             backgroundColor: disabled 
               ? tokens.colors.overlay.medium 
               : isCapturing 
-              ? tokens.colors.accent.building 
+              ? tokens.colors.accent.history 
               : tokens.colors.background,
             borderWidth: isCapturing ? 0 : 2,
             borderColor: tokens.colors.text,

@@ -38,8 +38,8 @@ const IDENTIFY_TIMEOUT = 5000; // 预识别超时
 
 export default function CameraScreen() {
   const router = useRouter();
-  const camera = useRef<Camera>(null);
-  const identifyTimer = useRef<NodeJS.Timeout | null>(null);
+  const camera = useRef<any>(null);
+  const identifyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const appState = useRef(AppState.currentState);
   
   // 权限和设备 - only if camera is supported
@@ -59,7 +59,7 @@ export default function CameraScreen() {
   const [showAlignmentHint, setShowAlignmentHint] = useState(false);
   
   // Store
-  const { setCurrentMeta, setPrefs } = useGuideStore();
+  const { setMeta, setPrefs } = useGuideStore();
   const { items: historyItems, addItem } = useHistoryStore();
   
   // 获取位置权限和当前位置
@@ -121,12 +121,12 @@ export default function CameraScreen() {
       
       // 模拟识别API调用
       await mockDelay();
-      const result = mockIdentifyResponse;
+      const result = mockIdentifyResponse.result as IdentifyResult;
       
       setIdentifyResult(result);
       
       // 根据置信度给出提示
-      if (result.confidence < 0.6) {
+      if (result && result.confidence < 0.6) {
         setShowAlignmentHint(true);
         setTimeout(() => setShowAlignmentHint(false), 3000);
       }
@@ -186,13 +186,12 @@ export default function CameraScreen() {
       };
       
       // 设置当前讲解元数据
-      setCurrentMeta({
-        id: `guide_${Date.now()}`,
+      setMeta({
+        guideId: `guide_${Date.now()}`,
         title: lectureData.name,
         confidence: lectureData.confidence,
         bbox: identifyResult?.bbox,
-        imageUri: lectureData.imageUri,
-        createdAt: new Date(),
+        coverImage: lectureData.imageUri,
       });
       
       // 跳转到讲解页面
@@ -220,12 +219,11 @@ export default function CameraScreen() {
         const asset = result.assets[0];
         
         // 设置导入的图片数据
-        setCurrentMeta({
-          id: `guide_${Date.now()}`,
+        setMeta({
+          guideId: `guide_${Date.now()}`,
           title: '导入的图片',
           confidence: 0,
-          imageUri: asset.uri,
-          createdAt: new Date(),
+          coverImage: asset.uri,
         });
         
         // 跳转到讲解页面
@@ -256,12 +254,11 @@ export default function CameraScreen() {
   
   // 历史记录点击
   const handleHistoryItemPress = (item: any) => {
-    setCurrentMeta({
-      id: item.id,
+    setMeta({
+      guideId: item.id,
       title: item.title,
       confidence: item.confidence || 0,
-      imageUri: item.coverPath,
-      createdAt: new Date(item.createdAt),
+      coverImage: item.coverImage,
     });
     
     router.push('/lecture');
@@ -370,7 +367,7 @@ export default function CameraScreen() {
         
         {/* 取景器 */}
         <Viewfinder
-          identifyResult={identifyResult}
+          identifyResult={identifyResult || undefined}
           isIdentifying={isIdentifying}
           onFramePress={handleViewfinderPress}
         />

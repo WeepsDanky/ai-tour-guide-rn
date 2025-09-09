@@ -134,9 +134,9 @@ export function HistoryBar({ recentItems, onSwipeUp, onItemPress }: HistoryBarPr
                   backgroundColor: tokens.colors.overlay.medium,
                 }}
               >
-                {item.coverPath ? (
+                {item.coverImage ? (
                   <Image
-                    source={{ uri: item.coverPath }}
+                    source={{ uri: item.coverImage }}
                     style={{
                       width: '100%',
                       height: '100%',

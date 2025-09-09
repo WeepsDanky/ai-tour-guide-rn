@@ -46,6 +46,7 @@ export const typography = {
     h2: 18,
     body: 16,
     meta: 13,
+    caption: 12,
   },
   
   lineHeight: {
@@ -53,6 +54,7 @@ export const typography = {
     h2: 24,
     body: 22,
     meta: 18,
+    caption: 16,
   },
   
   letterSpacing: -0.4, // FIX: Changed from a nested object to a direct number. This is the root cause.

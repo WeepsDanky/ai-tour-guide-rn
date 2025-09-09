@@ -12,7 +12,6 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Audio } from 'expo-audio';
 import * as Haptics from 'expo-haptics';
 import { tokens } from '../lib/tokens';
 import { useGuideStore } from '../state/guide.store';
@@ -24,7 +23,7 @@ import { ActionArea } from '../components/lecture/ActionArea';
 import { openGuideStream } from '../lib/stream';
 import { getDeviceId } from '../lib/device';
 import { HistoryStorage } from '../lib/storage';
-import type { GuideMeta, HistoryItem, PlayerState, GuideCard } from '../types/schema';
+import type { GuideMeta, HistoryItem, GuideCard } from '../types/schema';
 
 export default function LectureScreen() {
   const router = useRouter();
@@ -52,28 +51,12 @@ export default function LectureScreen() {
   
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [autoReturnTimer, setAutoReturnTimer] = useState<NodeJS.Timeout | null>(null);
+  const [autoReturnTimer, setAutoReturnTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
   const streamRef = useRef<(() => void) | null>(null);
-  const historyStorage = useRef(new HistoryStorage());
+  const historyStorage = useRef(HistoryStorage);
   
-  // 初始化音频会话
-  useEffect(() => {
-    const initAudio = async () => {
-      try {
-        await Audio.setAudioModeAsync({
-          allowsRecordingIOS: false,
-          staysActiveInBackground: true,
-          playsInSilentModeIOS: true,
-          shouldDuckAndroid: true,
-          playThroughEarpieceAndroid: false,
-        });
-      } catch (error) {
-        console.warn('Failed to set audio mode:', error);
-      }
-    };
-    
-    initAudio();
-  }, []);
+  // 音频会话（已简化为无操作，避免 expo-audio 依赖）
+  useEffect(() => {}, []);
   
   // 启动流式连接
   useEffect(() => {
@@ -103,12 +86,7 @@ export default function LectureScreen() {
             imageBase64: params.imageUri, // 这里应该是base64编码的图片
             identifyId: params.identifyId,
             geo: { lat: 0, lng: 0 }, // 实际应用中从相机页面传入
-            prefs: {
-              language: 'zh-CN',
-              speed: 1.0,
-              style: 'casual',
-              depth: 'medium',
-            },
+            prefs: { language: 'zh', voiceSpeed: 1.0, autoReturn: true, hapticFeedback: true, subtitles: true },
           };
         } else {
           throw new Error('缺少必要的参数');
@@ -148,20 +126,17 @@ export default function LectureScreen() {
               
               // 保存到历史记录
               if (currentMeta && transcript) {
-                const historyItem: any = { // Use 'any' temporarily if schema mismatches
+                const historyItem: HistoryItem = {
                   id: currentMeta.guideId,
                   guideId: currentMeta.guideId,
                   title: currentMeta.title,
-                  transcript,
                   summary: transcript.substring(0, 100),
-                  coverImage: params.imageUri,
+                  coverImage: params.imageUri || '',
                   confidence: currentMeta.confidence,
-                  timestamp: new Date().getTime(),
+                  timestamp: Date.now(),
                   isFavorite: false,
-                  keyPoints: cards.find(c => c.type === 'what')?.data?.points || [],
-                  tags: cards.find(c => c.type === 'components')?.data?.items?.map((item: any) => item.term) || [],
+                  location: undefined,
                 };
-                
                 await HistoryStorage.addHistoryItem(historyItem);
                 addItem(historyItem);
               }

@@ -38,7 +38,7 @@ export function CameraBottomBar({
       return tokens.colors.semantic.warning;
     }
     if (showAlignmentHint) {
-      return tokens.colors.accent.building;
+      return tokens.colors.accent.history;
     }
     return tokens.colors.semantic.success;
   };

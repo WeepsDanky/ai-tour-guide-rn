@@ -18,27 +18,27 @@ export function HistoryList({
   refreshing = false,
   onRefresh
 }: HistoryListProps) {
-  const { 
-    items, 
-    currentTag, 
+  const {
+    items,
+    activeTab,
     isLoading,
     toggleFavorite,
-    filteredItems,
-    recentItems 
+    getFilteredItems,
+    getRecentItems,
   } = useHistoryStore();
   
   // 根据当前标签过滤数据
   const displayItems = useMemo(() => {
-    switch (currentTag) {
+    switch (activeTab) {
       case 'favorites':
-        return filteredItems('favorites');
+        return getFilteredItems();
       case 'recent':
-        return recentItems(20); // 显示最近20条
+        return getRecentItems(20); // 显示最近20条
       case 'all':
       default:
         return items;
     }
-  }, [items, currentTag, filteredItems, recentItems]);
+  }, [items, activeTab, getFilteredItems, getRecentItems]);
   
   // 处理收藏切换
   const handleFavoriteToggle = (item: HistoryItem) => {
@@ -50,10 +50,10 @@ export function HistoryList({
     let emptyText = '暂无历史记录';
     let emptySubtext = '拍摄一些照片开始探索吧';
     
-    if (currentTag === 'favorites') {
+    if (activeTab === 'favorites') {
       emptyText = '暂无收藏';
       emptySubtext = '收藏感兴趣的内容，方便随时回顾';
-    } else if (currentTag === 'recent') {
+    } else if (activeTab === 'recent') {
       emptyText = '暂无最近记录';
       emptySubtext = '最近的拍摄记录会显示在这里';
     }
@@ -81,7 +81,7 @@ export function HistoryList({
     if (displayItems.length === 0) return null;
     
     let headerText = '';
-    switch (currentTag) {
+    switch (activeTab) {
       case 'favorites':
         headerText = `收藏 (${displayItems.length})`;
         break;
