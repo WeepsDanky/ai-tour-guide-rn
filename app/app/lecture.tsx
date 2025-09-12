@@ -17,12 +17,13 @@ import { useGuideStream } from '../hooks/useGuideStream';
 
 export default function LectureScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ imageUri?: string; identifyId?: string; guideId?: string; isReplay?: string }>();
+  const params = useLocalSearchParams<{ imageUri?: string; identifyId?: string; guideId?: string; isReplay?: string; geo?: string }>();
 
   // Stream lifecycle managed by hook
   const { isLoading, error } = useGuideStream({
     imageUri: (params.imageUri as string) || undefined,
     identifyId: (params.identifyId as string) || undefined,
+    geo: (params.geo as string) || undefined,
     guideId: (params.guideId as string) || undefined,
     isReplay: (params.isReplay as string) || undefined,
   });

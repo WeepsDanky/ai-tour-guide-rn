@@ -2,11 +2,13 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
+import * as FileSystem from 'expo-file-system';
 import { useIsFocused } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import { isCameraSupported } from '../lib/expo-go-detector';
 import { useGuideStore } from '../state/guide.store';
 import type { GeoLocation, IdentifyResult } from '../types/schema';
+import { IdentifyApi } from '../lib/api';
 
 // Conditionally resolve camera hooks to remain safe in Expo Go
 let useCameraDeviceReal: any = null;
@@ -96,7 +98,7 @@ export function useCamera(): UseCameraReturn {
           const location = await Location.getCurrentPositionAsync({
             accuracy: Location.Accuracy.Balanced,
           });
-          setCurrentLocation({ lat: location.coords.latitude, lng: location.coords.longitude });
+          setCurrentLocation({ lat: location.coords.latitude, lng: location.coords.longitude, accuracyM: location.coords.accuracy ? Math.round(location.coords.accuracy) : undefined });
         }
       } catch (error) {
         console.error('[useCamera] Failed to get location:', error);
@@ -139,15 +141,17 @@ export function useCamera(): UseCameraReturn {
     setIdentifyResult(null);
     try {
       const photo = await camera.current.takePhoto({ quality: 30, skipMetadata: true });
-      void photo; // placeholder for real API call input
-      // Simulate identification by using mock result-like structure
-      const mock: IdentifyResult = {
-        id: `id_${Date.now()}`,
-        name: '模拟对象',
-        confidence: 0.75,
+      const base64 = await FileSystem.readAsStringAsync(photo.path, { encoding: FileSystem.EncodingType.Base64 });
+      const dataUrl = `data:image/jpeg;base64,${base64}`;
+      const resp = await IdentifyApi.identify(dataUrl, currentLocation);
+      const best = resp.candidates && resp.candidates.length > 0 ? resp.candidates[0] : null;
+      const result: IdentifyResult = {
+        id: resp.identifyId,
+        name: best ? best.spot : '未知对象',
+        confidence: best ? best.confidence : 0,
       };
-      setIdentifyResult(mock);
-      if (mock.confidence < 0.6) {
+      setIdentifyResult(result);
+      if (result.confidence < 0.6) {
         setShowAlignmentHint(true);
         setTimeout(() => setShowAlignmentHint(false), 3000);
       }
@@ -181,21 +185,17 @@ export function useCamera(): UseCameraReturn {
     cancelIdentification();
     try {
       const photo = await camera.current.takePhoto({ quality: 90, skipMetadata: false });
-      const lectureData = {
-        imageUri: photo.path,
-        identifyId: identifyResult?.id,
-        geo: currentLocation,
-        confidence: identifyResult?.confidence || 0,
-        name: identifyResult?.name || '未知对象',
-      };
+      const imageUri = photo.path;
+      const geoParam = currentLocation ? encodeURIComponent(JSON.stringify(currentLocation)) : undefined;
+      // Optimistically set some meta info; real meta will replace after WS connects
       setMeta({
         guideId: `guide_${Date.now()}`,
-        title: lectureData.name,
-        confidence: lectureData.confidence,
+        title: identifyResult?.name || '未知对象',
+        confidence: identifyResult?.confidence || 0,
         bbox: identifyResult?.bbox,
-        coverImage: lectureData.imageUri,
+        coverImage: imageUri,
       });
-      router.push({ pathname: '/lecture', params: { imageUri: lectureData.imageUri, identifyId: lectureData.identifyId } });
+      router.push({ pathname: '/lecture', params: { imageUri, identifyId: identifyResult?.id, geo: geoParam } as any });
     } catch (error) {
       console.error('[useCamera] Capture failed:', error);
       Alert.alert('拍照失败', '请重试');

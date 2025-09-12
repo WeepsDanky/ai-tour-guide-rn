@@ -2,6 +2,8 @@
 export interface GeoLocation {
   lat: number;
   lng: number;
+  // optional accuracy in meters if available
+  accuracyM?: number;
 }
 
 // 识别结果
@@ -84,7 +86,7 @@ export interface WSReplayMessage {
 
 export interface WSNackMessage {
   type: 'nack';
-  missingSeq: number[];
+  seq: number;
 }
 
 // 服务端响应消息类型
@@ -123,12 +125,15 @@ export interface WSAudioResponse {
 export interface WSEosResponse {
   type: 'eos';
   guideId: string;
+  totalDurationMs?: number;
+  transcript?: string;
 }
 
 export interface WSErrorResponse {
-  type: 'err';
+  type: 'err' | 'error';
   code: string;
-  msg: string;
+  msg?: string;
+  message?: string;
 }
 
 // 播放器状态

@@ -1,14 +1,6 @@
-import { IdentifyResp, GeoLocation } from '../types/schema';
+import { GeoLocation } from '../types/schema';
 import { getDeviceId } from './device';
-import { 
-  mockIdentifyResponse, 
-  mockIdentifyFailResponse, 
-  mockHistoryItems, 
-  mockHealthResponse, 
-  mockConfigResponse,
-  mockDelay,
-  mockRandomFailure 
-} from '../data/data';
+// no mock imports; all real APIs
 
 // API 配置
 const API_CONFIG = {
@@ -58,7 +50,7 @@ class ApiClient {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
       ...options.headers,
-    };
+    } as Record<string, string>;
 
     // 创建AbortController用于超时控制
     const controller = new AbortController();
@@ -193,41 +185,19 @@ async function withRetry<T>(
  * 图像识别API
  */
 export class IdentifyApi {
-  /**
-   * 识别图像 (使用模拟数据)
-   */
   static async identify(
     imageBase64: string,
     geo?: GeoLocation
-  ): Promise<IdentifyResp> {
-    // 模拟网络延迟
-    await mockDelay(1500);
-    
-    // 模拟随机失败
-    if (!mockRandomFailure(0.85)) {
-      return mockIdentifyFailResponse;
-    }
-    
-    return mockIdentifyResponse;
-  }
-
-  /**
-   * 获取识别历史 (使用模拟数据)
-   */
-  static async getIdentifyHistory(
-    limit: number = 20,
-    offset: number = 0
-  ): Promise<{ items: any[], total: number }> {
-    // 模拟网络延迟
-    await mockDelay(800);
-    
-    // 返回模拟历史数据的分页结果
-    const start = offset;
-    const end = Math.min(start + limit, mockHistoryItems.length);
-    return {
-      items: mockHistoryItems.slice(start, end),
-      total: mockHistoryItems.length
+  ): Promise<{ identifyId: string; candidates: { spot: string; confidence: number; bbox?: any }[] }> {
+    const deviceId = await getDeviceId();
+    const payload: any = {
+      imageBase64,
+      deviceId,
+      geo: geo && geo.lat != null && geo.lng != null
+        ? { lat: geo.lat, lng: geo.lng, accuracyM: geo.accuracyM ?? 50 }
+        : { lat: 0, lng: 0, accuracyM: 9999 },
     };
+    return withRetry(() => apiClient.post('/guide/identify', payload));
   }
 }
 
@@ -235,14 +205,8 @@ export class IdentifyApi {
  * 健康检查API
  */
 export class HealthApi {
-  /**
-   * 健康检查 (使用模拟数据)
-   */
-  static async checkHealth(): Promise<{ status: string; timestamp: number }> {
-    // 模拟网络延迟
-    await mockDelay(300);
-    
-    return mockHealthResponse;
+  static async checkHealth(): Promise<{ status: string; service?: string }> {
+    return withRetry(() => apiClient.get('/guide/health'));
   }
 }
 
@@ -250,14 +214,9 @@ export class HealthApi {
  * 配置API
  */
 export class ConfigApi {
-  /**
-   * 获取应用配置 (使用模拟数据)
-   */
   static async getConfig(): Promise<any> {
-    // 模拟网络延迟
-    await mockDelay(500);
-    
-    return mockConfigResponse;
+    // If you have a real config endpoint, update here. Fallback: return empty config.
+    return {};
   }
 }
 

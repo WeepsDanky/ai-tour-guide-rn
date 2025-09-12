@@ -1,18 +1,27 @@
 // Simplify: stop importing expo-audio to avoid missing types; keep structure
 const Audio: any = { Sound: { createAsync: async (...args: any[]) => ({ sound: { unloadAsync: async () => {}, setOnPlaybackStatusUpdate: (_: any) => {} } }) } };
 import * as FileSystem from 'expo-file-system';
-import { WSMessage, WSResponse, WSInitMessage, WSReplayMessage, WSNackMessage } from '../types/schema';
+import { WSMessage, WSResponse, WSInitMessage, WSReplayMessage } from '../types/schema';
 import { getDeviceId } from './device';
-import { mockWSResponses, mockDelay } from '../data/data';
 
 // WebSocket 配置
 const WS_CONFIG = {
-  URL: process.env.EXPO_PUBLIC_WS_URL || 'wss://api.example.com/ws/v1/guide/stream',
   RECONNECT_INTERVAL: 3000,
   MAX_RECONNECT_ATTEMPTS: 5,
   PING_INTERVAL: 30000,
   AUDIO_PRELOAD_THRESHOLD: 200, // 剩余200ms时预加载下一段
 };
+
+function buildWsUrl(): string {
+  const explicit = process.env.EXPO_PUBLIC_WS_URL;
+  if (explicit) return explicit;
+  const apiBase = process.env.EXPO_PUBLIC_API_URL || 'https://api.example.com/api/v1';
+  // ensure we have protocol swapped and trailing path
+  const wsBase = apiBase.replace(/^http:/i, 'ws:').replace(/^https:/i, 'wss:');
+  // remove trailing slash
+  const trimmed = wsBase.endsWith('/') ? wsBase.slice(0, -1) : wsBase;
+  return `${trimmed}/guide/stream`;
+}
 
 /**
  * 流式播放器状态
@@ -40,6 +49,7 @@ export class GuideStreamConnection {
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private pingTimer: ReturnType<typeof setInterval> | null = null;
   private playerState: StreamPlayerState;
+  private initOrReplayPayload: { kind: 'init'; payload: Omit<WSInitMessage, 'type' | 'deviceId'> } | { kind: 'replay'; payload: Omit<WSReplayMessage, 'type' | 'deviceId'> } | null = null;
   
   // 事件回调
   private onConnectionStateChange?: (state: ConnectionState) => void;
@@ -76,24 +86,21 @@ export class GuideStreamConnection {
   }
 
   /**
-   * 连接到WebSocket服务器 (使用模拟数据)
+   * 连接到WebSocket服务器
    */
   async connect(): Promise<void> {
-    if (this.connectionState === 'connected') {
-      return;
-    }
-
+    if (this.connectionState === 'connected') return;
     this.setConnectionState('connecting');
-    
-    // 模拟连接延迟
-    setTimeout(() => {
-      if (!this.playerState.isDestroyed) {
-        console.log('Mock WebSocket connected');
-        this.setConnectionState('connected');
-        this.reconnectAttempts = 0;
-        this.startPing();
-      }
-    }, 1000);
+    const url = buildWsUrl();
+    try {
+      this.ws = new WebSocket(url);
+      // @ts-ignore RN may not support binaryType; safe to attempt
+      try { (this.ws as any).binaryType = 'arraybuffer'; } catch {}
+      this.setupWebSocketHandlers();
+    } catch (error) {
+      this.setConnectionState('error');
+      this.onError?.(`Failed to open WebSocket: ${String(error)}`);
+    }
   }
 
   /**
@@ -108,8 +115,9 @@ export class GuideStreamConnection {
       this.startPing();
     };
 
-    this.ws.onmessage = (event) => {
-      this.handleMessage(event.data);
+    this.ws.onmessage = (event: any) => {
+      const data = event && Object.prototype.hasOwnProperty.call(event, 'data') ? event.data : event;
+      this.handleMessage(data);
     };
 
     this.ws.onclose = (event) => {
@@ -136,55 +144,41 @@ export class GuideStreamConnection {
         console.warn('Received empty message data');
         return;
       }
-      
-      const message: WSResponse = typeof data === 'string' ? JSON.parse(data) : data;
-      
-      if (!message || typeof message !== 'object') {
-        console.warn('Invalid message format:', message);
+      // Handle binary frames (ArrayBuffer)
+      if (typeof data !== 'string') {
+        const buffer: ArrayBuffer = data as ArrayBuffer;
+        const view = new DataView(buffer);
+        if (view.byteLength < 4) return;
+        const headerLen = view.getUint32(0);
+        const headerBytes = new Uint8Array(buffer, 4, headerLen);
+        const headerStr = new TextDecoder('utf-8').decode(headerBytes);
+        const header = JSON.parse(headerStr);
+        const audioBytes = new Uint8Array(buffer, 4 + headerLen);
+        await this.handleBinaryAudio(header, audioBytes);
         return;
       }
-      
+
+      // Text frame
+      const message: WSResponse | any = JSON.parse(data);
+      if (!message || typeof message !== 'object') return;
       switch (message.type) {
         case 'meta':
-          if (message.guideId && message.title) {
-            this.onMetaReceived?.(message);
-          } else {
-            console.warn('Invalid meta message:', message);
-          }
+          this.onMetaReceived?.(message);
           break;
-          
         case 'text':
-          if (message.delta !== undefined) {
-            this.onTextReceived?.(message.delta);
-          } else {
-            console.warn('Invalid text message:', message);
-          }
+          if (message.delta !== undefined) this.onTextReceived?.(message.delta);
           break;
-          
         case 'audio':
-          if (message.seq !== undefined && message.bytes) {
-            await this.handleAudioMessage(message);
-          } else {
-            console.warn('Invalid audio message:', message);
-          }
+          // Fallback: audio provided as base64 JSON
+          await this.handleJsonAudio(message);
           break;
-          
         case 'eos':
-          if (message.guideId) {
-            this.onComplete?.(message.guideId);
-          } else {
-            console.warn('Invalid eos message:', message);
-          }
+          if (message.guideId) this.onComplete?.(message.guideId);
           break;
-          
         case 'err':
-          if (message.msg) {
-            this.onError?.(`Server error: ${message.msg}`);
-          } else {
-            this.onError?.('Unknown server error');
-          }
+        case 'error':
+          this.onError?.(message.msg || message.message || 'Server error');
           break;
-          
         default:
           console.warn('Unknown message type:', message);
       }
@@ -197,49 +191,51 @@ export class GuideStreamConnection {
   /**
    * 处理音频消息
    */
-  private async handleAudioMessage(message: any) {
+  private async handleJsonAudio(message: any) {
     try {
-      // 验证消息格式
-      if (!message || typeof message.seq !== 'number' || !message.bytes) {
-        console.warn('Invalid audio message format:', message);
-        return;
-      }
-      
-      // 检查序列号
-      if (message.seq < this.playerState.expectedSeq) {
-        // 忽略过期的音频段
-        return;
-      }
-      
-      if (message.seq > this.playerState.expectedSeq) {
-        // 发现缺失的音频段，请求重传
-        const missingSeqs = [];
-        for (let i = this.playerState.expectedSeq; i < message.seq; i++) {
-          missingSeqs.push(i);
-        }
-        this.sendNack(missingSeqs);
-      }
-      
-      // 保存音频文件
-      const fileName = `seg_${message.seq}.mp3`;
-      const filePath = `${FileSystem.cacheDirectory}${fileName}`;
-      
-      await FileSystem.writeAsStringAsync(filePath, message.bytes, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
-      
-      // 添加到播放队列
-      this.playerState.queue.push(filePath);
-      this.playerState.expectedSeq = message.seq + 1;
-      
-      // 如果当前没有播放，开始播放
-      if (!this.playerState.playing) {
-        this.startPlayback();
-      }
+      if (!message || typeof message.seq !== 'number' || !message.bytes) return;
+      await this.enqueueAudioSegment(message.seq, Uint8Array.from(atob(message.bytes), c => c.charCodeAt(0)));
     } catch (error) {
       console.error('Failed to handle audio message:', error);
       this.onError?.('Failed to process audio');
     }
+  }
+
+  private async handleBinaryAudio(header: any, audioBytes: Uint8Array) {
+    try {
+      if (!header || typeof header.seq !== 'number') return;
+      await this.enqueueAudioSegment(header.seq, audioBytes);
+    } catch (error) {
+      console.error('Failed to handle binary audio:', error);
+      this.onError?.('Failed to process audio');
+    }
+  }
+
+  private async enqueueAudioSegment(seq: number, audioBytes: Uint8Array) {
+    // 检查序列号
+    if (seq < this.playerState.expectedSeq) return;
+    if (seq > this.playerState.expectedSeq) {
+      // 请求上一段缺失的重传（服务端提示用 replay 恢复，这里仍发送 nack 以便未来支持）
+      this.sendNack(this.playerState.expectedSeq);
+    }
+    const fileName = `seg_${seq}.mp3`;
+    const filePath = `${FileSystem.cacheDirectory}${fileName}`;
+    const base64 = this.uint8ToBase64(audioBytes);
+    await FileSystem.writeAsStringAsync(filePath, base64, { encoding: FileSystem.EncodingType.Base64 });
+    this.playerState.queue.push(filePath);
+    this.playerState.expectedSeq = seq + 1;
+    if (!this.playerState.playing) this.startPlayback();
+  }
+
+  private uint8ToBase64(u8: Uint8Array): string {
+    let binary = '';
+    const chunkSize = 0x8000;
+    for (let i = 0; i < u8.length; i += chunkSize) {
+      const chunk = u8.subarray(i, i + chunkSize);
+      binary += String.fromCharCode.apply(null, Array.from(chunk) as any);
+    }
+    // eslint-disable-next-line no-undef
+    return btoa(binary);
   }
 
   /**
@@ -315,16 +311,8 @@ export class GuideStreamConnection {
    */
   async sendInit(payload: Omit<WSInitMessage, 'type' | 'deviceId'>): Promise<void> {
     const deviceId = await getDeviceId();
-    const message: WSInitMessage = {
-      type: 'init',
-      deviceId,
-      ...payload,
-    };
-    
-    console.log('Mock sending init message:', message);
-    
-    // 模拟服务器响应
-    this.simulateServerResponse();
+    const message: WSInitMessage = { type: 'init', deviceId, ...payload };
+    this.send(message);
   }
 
   /**
@@ -332,27 +320,15 @@ export class GuideStreamConnection {
    */
   async sendReplay(payload: Omit<WSReplayMessage, 'type' | 'deviceId'>): Promise<void> {
     const deviceId = await getDeviceId();
-    const message: WSReplayMessage = {
-      type: 'replay',
-      deviceId,
-      ...payload,
-    };
-    
-    console.log('Mock sending replay message:', message);
-    
-    // 模拟服务器响应
-    this.simulateServerResponse();
+    const message: WSReplayMessage = { type: 'replay', deviceId, ...payload };
+    this.send(message);
   }
 
   /**
    * 发送NACK消息
    */
-  private sendNack(missingSeqs: number[]) {
-    const message: WSNackMessage = {
-      type: 'nack',
-      missingSeq: missingSeqs,
-    };
-    
+  private sendNack(seq: number) {
+    const message = { type: 'nack', seq } as WSMessage & { type: 'nack'; seq: number };
     this.send(message);
   }
 
@@ -360,47 +336,19 @@ export class GuideStreamConnection {
    * 发送消息 (模拟)
    */
   private send(message: WSMessage) {
-    if (this.connectionState === 'connected') {
-      console.log('Mock sending message:', JSON.stringify(message));
-    } else {
-      this.onError?.('Mock WebSocket is not connected');
+    if (this.ws && this.connectionState === 'connected') {
+      try {
+        this.ws.send(JSON.stringify(message));
+      } catch (error) {
+        this.onError?.(`Failed to send WS message: ${String(error)}`);
+      }
     }
   }
 
   /**
    * 模拟服务器响应
    */
-  private async simulateServerResponse() {
-    if (this.playerState.isDestroyed) return;
-    
-    // 发送元数据
-    await mockDelay(500);
-    if (!this.playerState.isDestroyed) {
-      this.handleMessage(mockWSResponses.meta);
-    }
-    
-    // 发送文本块
-    for (const textChunk of mockWSResponses.textChunks) {
-      await mockDelay(800);
-      if (!this.playerState.isDestroyed) {
-        this.handleMessage(textChunk);
-      }
-    }
-    
-    // 发送音频块
-    for (const audioChunk of mockWSResponses.audioChunks) {
-      await mockDelay(1200);
-      if (!this.playerState.isDestroyed) {
-        this.handleMessage(audioChunk);
-      }
-    }
-    
-    // 发送结束信号
-    await mockDelay(500);
-    if (!this.playerState.isDestroyed) {
-      this.handleMessage(mockWSResponses.eos);
-    }
-  }
+  // remove mock simulation
 
   /**
    * 设置连接状态
@@ -498,7 +446,7 @@ export function createGuideStream(): GuideStreamConnection {
   return new GuideStreamConnection();
 }
 
-// 模拟流式连接函数
+// 实际 WebSocket 打开函数
 export function openGuideStream(
   payload: any,
   callbacks: {
@@ -511,82 +459,28 @@ export function openGuideStream(
     onEnd?: () => void;
   }
 ): () => void {
-  let isActive = true;
-  
-  // 模拟异步流式响应
-  const simulateStream = async () => {
-    try {
-      // 模拟延迟
-      await mockDelay();
-      
-      if (!isActive) return;
-      
-      // 发送元数据
-      if (callbacks.onMeta) {
-        callbacks.onMeta({
-          guideId: `guide_${Date.now()}`,
-          title: '模拟讲解对象',
-          confidence: 0.85,
-          bbox: [100, 100, 200, 200],
-          createdAt: new Date(),
-        });
-      }
-      
-      // 模拟文本流
-      const textChunks = [
-        '这是一个',
-        '非常有趣的',
-        '历史建筑，',
-        '建于18世纪，',
-        '具有典型的',
-        '巴洛克风格特征。'
-      ];
-      
-      for (const chunk of textChunks) {
-        if (!isActive) return;
-        await new Promise(resolve => setTimeout(resolve, 300));
-        if (callbacks.onText) {
-          callbacks.onText(chunk);
+  const conn = createGuideStream();
+  conn.setEventHandlers({
+    onConnectionStateChange: (state) => {
+      if (state === 'connected') {
+        if (payload?.type === 'replay') {
+          void conn.sendReplay({ guideId: payload.guideId, fromMs: payload.fromMs ?? 0 });
+        } else if (payload?.type === 'init') {
+          void conn.sendInit({
+            imageBase64: payload.imageBase64,
+            imageUrl: payload.imageUrl,
+            identifyId: payload.identifyId,
+            geo: payload.geo,
+            prefs: payload.prefs,
+          });
         }
       }
-      
-      // 模拟音频开始
-      if (callbacks.onAudioStart) {
-        callbacks.onAudioStart();
-      }
-      
-      // 模拟音频播放时间
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
-      if (!isActive) return;
-      
-      // 模拟音频结束
-      if (callbacks.onAudioEnd) {
-        callbacks.onAudioEnd();
-      }
-      
-      // 发送卡片数据
-      if (callbacks.onCards) {
-        callbacks.onCards(mockWSResponses.cards);
-      }
-      
-      // 结束流
-      if (callbacks.onEnd) {
-        callbacks.onEnd();
-      }
-      
-    } catch (error) {
-      if (callbacks.onError) {
-        callbacks.onError('模拟流连接错误');
-      }
-    }
-  };
-  
-  // 启动模拟流
-  simulateStream();
-  
-  // 返回清理函数
-  return () => {
-    isActive = false;
-  };
+    },
+    onMetaReceived: (m) => callbacks.onMeta?.(m),
+    onTextReceived: (d) => callbacks.onText?.(d),
+    onError: (e) => callbacks.onError?.(e),
+    onComplete: (_gid) => callbacks.onEnd?.(),
+  });
+  void conn.connect();
+  return () => { void conn.disconnect(); };
 }
