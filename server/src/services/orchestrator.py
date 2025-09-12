@@ -117,7 +117,7 @@ class NarrativeOrchestrator:
                 stream=True,
                 max_tokens=2000,
                 temperature=0.7,
-                api_config={"api_key": settings.OPENAI_API_KEY},
+                api_key=settings.OPENAI_API_KEY,
             ):
                 try:
                     delta = chunk.choices[0].delta.content or ""

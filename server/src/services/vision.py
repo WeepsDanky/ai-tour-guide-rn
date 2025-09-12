@@ -118,7 +118,7 @@ class VisionService:
                 max_tokens=1000,
                 temperature=0.7,
                 response_format={"type": "json_object"},
-                api_config={"api_key": settings.OPENAI_API_KEY},
+                api_key=settings.OPENAI_API_KEY,
             )
             content = response.choices[0].message.content
             return self._parse_vision_response({"content": content})
