@@ -110,7 +110,7 @@ class NarrativeOrchestrator:
                 {"role": "user", "content": context},
             ]
             buffer = ""
-            async for chunk in acompletion(
+            stream_iter = await acompletion(
                 provider=self.llm_provider,
                 model="gpt-4-turbo",
                 messages=messages,
@@ -118,7 +118,8 @@ class NarrativeOrchestrator:
                 max_tokens=2000,
                 temperature=0.7,
                 api_key=settings.OPENAI_API_KEY,
-            ):
+            )
+            async for chunk in stream_iter:
                 try:
                     delta = chunk.choices[0].delta.content or ""
                 except Exception:

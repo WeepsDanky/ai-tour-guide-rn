@@ -38,10 +38,17 @@ class InitMessage(BaseModel):
     """Initialize guide streaming session"""
     type: Literal["init"]
     deviceId: str = Field(..., description="Device identifier")
-    imageBase64: str = Field(..., description="Base64 encoded image")
+    imageBase64: Optional[str] = Field(None, description="Base64 string or data URL")
+    imageUrl: Optional[str] = Field(None, description="Direct https URL to the image")
     identifyId: Optional[str] = Field(None, description="Optional identify session ID")
     geo: Geo = Field(..., description="Geographic location")
     prefs: Dict[str, Any] = Field(default_factory=dict, description="User preferences")
+
+    @model_validator(mode="after")
+    def _validate_image_source(self) -> "InitMessage":
+        if not self.imageBase64 and not self.imageUrl:
+            raise ValueError("Either imageBase64 or imageUrl must be provided")
+        return self
 
 class ReplayMessage(BaseModel):
     """Request to replay from specific position"""

@@ -41,6 +41,14 @@ create table guide_segments (
 -- Create index for efficient querying of guide segments
 create index on guide_segments(guide_id);
 
+-- Create storage bucket for audio segments (public for client access)
+do $$
+begin
+  if not exists (select 1 from storage.buckets where id = 'audio-seg') then
+    insert into storage.buckets (id, name, public) values ('audio-seg', 'audio-seg', true);
+  end if;
+end $$;
+
 -- Add foreign key constraints if needed (optional, depends on your requirements)
 -- alter table identify_sessions add constraint fk_identify_device foreign key (device_id) references devices(id);
 -- alter table guides add constraint fk_guide_device foreign key (device_id) references devices(id);

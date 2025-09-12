@@ -138,6 +138,7 @@ class VisionService:
                 response_format={"type": "json_object"},
                 api_key=settings.OPENAI_API_KEY,
             )
+            # acompletion returns a normal response for non-streaming mode
             content = response.choices[0].message.content
             return self._parse_vision_response({"content": content})
         except asyncio.TimeoutError:
