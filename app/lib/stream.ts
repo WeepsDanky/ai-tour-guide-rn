@@ -1,5 +1,6 @@
-// Simplify: stop importing expo-audio to avoid missing types; keep structure
-const Audio: any = { Sound: { createAsync: async (...args: any[]) => ({ sound: { unloadAsync: async () => {}, setOnPlaybackStatusUpdate: (_: any) => {} } }) } };
+// Prefer real expo-av audio; fallback to stub in non-Expo environments
+import { getAudio, audioLog, ensureAudioMode, isStubAudio } from './audio';
+const Audio: any = getAudio();
 import * as FileSystem from 'expo-file-system';
 import { WSMessage, WSResponse, WSInitMessage, WSReplayMessage } from '../types/schema';
 import { getDeviceId } from './device';
@@ -71,6 +72,8 @@ export class GuideStreamConnection {
   private playerState: StreamPlayerState;
   private initOrReplayPayload: { kind: 'init'; payload: Omit<WSInitMessage, 'type' | 'deviceId'> } | { kind: 'replay'; payload: Omit<WSReplayMessage, 'type' | 'deviceId'> } | null = null;
   private wsUrl: string | null = null;
+  private onAudioStartCb?: () => void;
+  private onAudioEndCb?: () => void;
   
   // 事件回调
   private onConnectionStateChange?: (state: ConnectionState) => void;
@@ -98,12 +101,16 @@ export class GuideStreamConnection {
     onMetaReceived?: (meta: any) => void;
     onError?: (error: string) => void;
     onComplete?: (guideId: string) => void;
+    onAudioStart?: () => void;
+    onAudioEnd?: () => void;
   }) {
     this.onConnectionStateChange = handlers.onConnectionStateChange;
     this.onTextReceived = handlers.onTextReceived;
     this.onMetaReceived = handlers.onMetaReceived;
     this.onError = handlers.onError;
     this.onComplete = handlers.onComplete;
+    this.onAudioStartCb = handlers.onAudioStart;
+    this.onAudioEndCb = handlers.onAudioEnd;
   }
 
   /**
@@ -247,7 +254,7 @@ export class GuideStreamConnection {
   private async handleJsonAudio(message: any) {
     try {
       if (!message || typeof message.seq !== 'number' || !message.bytes) return;
-      await this.enqueueAudioSegment(message.seq, Uint8Array.from(atob(message.bytes), c => c.charCodeAt(0)));
+      await this.enqueueAudioBase64(message.seq, message.bytes);
     } catch (error) {
       console.error('Failed to handle audio message:', error);
       this.onError?.('Failed to process audio');
@@ -273,23 +280,58 @@ export class GuideStreamConnection {
     }
     const fileName = `seg_${seq}.mp3`;
     const filePath = `${FileSystem.cacheDirectory}${fileName}`;
-    const base64 = this.uint8ToBase64(audioBytes);
+    const base64 = this.bytesToBase64(audioBytes);
     await FileSystem.writeAsStringAsync(filePath, base64, { encoding: FileSystem.EncodingType.Base64 });
+    try {
+      const info: any = await FileSystem.getInfoAsync(filePath);
+      audioLog('file saved', { seq, uri: info?.uri, exists: info?.exists === true });
+    } catch {}
     this.playerState.queue.push(filePath);
     this.playerState.expectedSeq = seq + 1;
     wsLog('audio enqueued', { seq, queueLen: this.playerState.queue.length });
     if (!this.playerState.playing) this.startPlayback();
   }
 
-  private uint8ToBase64(u8: Uint8Array): string {
-    let binary = '';
-    const chunkSize = 0x8000;
-    for (let i = 0; i < u8.length; i += chunkSize) {
-      const chunk = u8.subarray(i, i + chunkSize);
-      binary += String.fromCharCode.apply(null, Array.from(chunk) as any);
+  private async enqueueAudioBase64(seq: number, base64: string) {
+    if (seq < this.playerState.expectedSeq) return;
+    if (seq > this.playerState.expectedSeq) {
+      this.sendNack(this.playerState.expectedSeq);
     }
-    // eslint-disable-next-line no-undef
-    return btoa(binary);
+    const fileName = `seg_${seq}.mp3`;
+    const filePath = `${FileSystem.cacheDirectory}${fileName}`;
+    await FileSystem.writeAsStringAsync(filePath, base64, { encoding: FileSystem.EncodingType.Base64 });
+    try {
+      const info: any = await FileSystem.getInfoAsync(filePath);
+      audioLog('file saved (json)', { seq, uri: info?.uri, exists: info?.exists === true });
+    } catch {}
+    this.playerState.queue.push(filePath);
+    this.playerState.expectedSeq = seq + 1;
+    wsLog('audio enqueued', { seq, queueLen: this.playerState.queue.length });
+    if (!this.playerState.playing) this.startPlayback();
+  }
+
+  private bytesToBase64(u8: Uint8Array): string {
+    const enc = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+    let out = '';
+    let i = 0;
+    while (i < u8.length) {
+      const o1 = u8[i++] ?? 0;
+      const o2 = u8[i++] ?? 0;
+      const o3 = u8[i++] ?? 0;
+      const bits = (o1 << 16) | (o2 << 8) | o3;
+      const h1 = (bits >> 18) & 0x3f;
+      const h2 = (bits >> 12) & 0x3f;
+      const h3 = (bits >> 6) & 0x3f;
+      const h4 = bits & 0x3f;
+      out += enc[h1] + enc[h2] + enc[h3] + enc[h4];
+    }
+    const mod = u8.length % 3;
+    if (mod === 1) {
+      out = out.slice(0, -2) + '==';
+    } else if (mod === 2) {
+      out = out.slice(0, -1) + '=';
+    }
+    return out;
   }
 
   /**
@@ -301,6 +343,7 @@ export class GuideStreamConnection {
     }
     
     this.playerState.playing = true;
+    try { this.onAudioStartCb?.(); } catch {}
     await this.playNext();
   }
 
@@ -315,19 +358,28 @@ export class GuideStreamConnection {
     const nextPath = this.playerState.queue.shift();
     if (!nextPath) {
       this.playerState.playing = false;
+      try { this.onAudioEndCb?.(); } catch {}
       return;
     }
 
     try {
+      await ensureAudioMode();
+      if (isStubAudio()) {
+        audioLog('expo-av not available, cannot play audio');
+        this.onError?.('Audio engine not available. Please install expo-av and rebuild the app.');
+        return;
+      }
       // 卸载当前音频
       if (this.playerState.currentSound) {
+        audioLog('unload previous');
         await this.playerState.currentSound.unloadAsync();
       }
 
       // 加载并播放新音频
+      audioLog('createAsync', nextPath);
       const { sound } = await Audio.Sound.createAsync(
         { uri: nextPath },
-        { shouldPlay: true }
+        { shouldPlay: true, progressUpdateIntervalMillis: 200 }
       );
       
       this.playerState.currentSound = sound;
@@ -337,16 +389,12 @@ export class GuideStreamConnection {
         if (!status || !status.isLoaded) {
           return;
         }
-        
-        if (status.durationMillis && status.positionMillis) {
-          const remaining = status.durationMillis - status.positionMillis;
-          
-          // 当剩余时间少于阈值且队列中有下一段时，预加载
-          if (remaining < WS_CONFIG.AUDIO_PRELOAD_THRESHOLD && this.playerState.queue.length > 0) {
-            this.playNext();
-          }
-        }
-        
+        audioLog('status', {
+          pos: status.positionMillis,
+          dur: status.durationMillis,
+          playing: (status as any).isPlaying,
+          didJustFinish: status.didJustFinish,
+        });
         if (status.didJustFinish) {
           // 当前段播放完成，播放下一段
           this.playNext();
@@ -354,7 +402,7 @@ export class GuideStreamConnection {
       });
       
     } catch (error) {
-      console.error('Failed to play audio:', error);
+      audioLog('play error', error);
       // 跳过当前段，继续播放下一段
       this.playNext();
     }
@@ -414,6 +462,9 @@ export class GuideStreamConnection {
     if (this.connectionState !== state) {
       this.connectionState = state;
       this.onConnectionStateChange?.(state);
+      if (state === 'disconnected') {
+        try { this.onAudioEndCb?.(); } catch {}
+      }
     }
   }
 
@@ -536,6 +587,8 @@ export function openGuideStream(
     },
     onMetaReceived: (m) => callbacks.onMeta?.(m),
     onTextReceived: (d) => callbacks.onText?.(d),
+    onAudioStart: () => callbacks.onAudioStart?.(),
+    onAudioEnd: () => callbacks.onAudioEnd?.(),
     onError: (e) => callbacks.onError?.(e),
     onComplete: (_gid) => callbacks.onEnd?.(),
   });

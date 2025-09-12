@@ -6,6 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { tokens } from '../lib/tokens';
+import { ensureAudioMode, audioLog } from '../lib/audio';
 
 // 防止启动画面自动隐藏
 SplashScreen.preventAutoHideAsync();
@@ -18,6 +19,11 @@ export default function RootLayout() {
     'SourceHanSans': require('../assets/fonts/SourceHanSans-Regular.ttf'),
     'Inter': require('../assets/fonts/Inter-VariableFont_opsz,wght.ttf'),
   });
+
+  useEffect(() => {
+    // configure audio mode at app start
+    ensureAudioMode().catch((e) => audioLog('ensureAudioMode error', e));
+  }, []);
 
   useEffect(() => {
     if (fontsLoaded || fontError) {
