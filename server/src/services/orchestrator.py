@@ -252,8 +252,10 @@ class NarrativeOrchestrator:
                 {"content-type": "audio/mpeg"}
             )
             
-            if result.get("error"):
-                self.logger.warning("storage upload error", extra={"error": result["error"]})
+            # Handle SDK response object (no dict .get())
+            error_attr = getattr(result, "error", None)
+            if error_attr:
+                self.logger.warning("storage upload error", extra={"error": str(error_attr)})
                 
         except Exception as e:
             self.logger.exception(f"Storage error: {e}")
