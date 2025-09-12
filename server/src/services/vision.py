@@ -32,14 +32,18 @@ class VisionService:
                 "lat": request.geo.lat,
                 "lng": request.geo.lng,
             })
-            # Decode base64 image to validate format
-            image_data = base64.b64decode(request.imageBase64)
+            # Normalize and validate base64 (support data URLs and missing padding)
+            normalized_b64 = self._normalize_base64(request.imageBase64)
+            try:
+                _ = base64.b64decode(normalized_b64)
+            except Exception as dec_err:
+                self.logger.warning("base64 decode warning; proceeding with normalized string", extra={"error": str(dec_err)})
             
             # Prepare the prompt for vision LLM
             prompt = self._create_vision_prompt(request.geo.lat, request.geo.lng)
             
             # Call external Vision LLM API
-            candidates = await self._call_vision_api(request.imageBase64, prompt)
+            candidates = await self._call_vision_api(normalized_b64, prompt)
             self.logger.info("vision identify success", extra={
                 "numCandidates": len(candidates) if candidates else 0,
             })
@@ -82,6 +86,18 @@ class VisionService:
         }}
         """
     
+    def _normalize_base64(self, image_base64: str) -> str:
+        """Accept data URLs and raw base64; strip whitespace; fix padding."""
+        s = (image_base64 or "").strip()
+        if s.startswith("data:"):
+            if "," in s:
+                s = s.split(",", 1)[1]
+        s = s.replace("\n", "").replace("\r", "").replace(" ", "")
+        missing = (-len(s)) % 4
+        if missing:
+            s += "=" * missing
+        return s
+
     async def _call_vision_api(self, image_base64: str, prompt: str) -> List[Candidate]:
         """
         Call external vision API
