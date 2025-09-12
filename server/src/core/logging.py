@@ -35,6 +35,18 @@ def setup_logging(level: str | int | None = None) -> None:
         logger = logging.getLogger(name)
         logger.setLevel(resolved_level)
 
+    # Suppress noisy debug logs from SDKs even in DEBUG mode
+    # Especially remove messages like "DEBUG [openai._base_client] Request options: ..."
+    noisy_loggers = {
+        "openai": logging.INFO,
+        "openai._base_client": logging.INFO,
+        "httpx": logging.INFO,
+        "httpcore": logging.INFO,
+        "any_llm": logging.INFO,
+    }
+    for name, lvl in noisy_loggers.items():
+        logging.getLogger(name).setLevel(lvl)
+
     setup_logging._configured = True  # type: ignore[attr-defined]
 
 

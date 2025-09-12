@@ -39,7 +39,11 @@ async def identify(
         identify_id = f"id_{uuid.uuid4().hex[:12]}"
         
         # Call vision service to identify location
-        candidates = await vision_service.identify_location(request)
+        try:
+            candidates = await vision_service.identify_location(request)
+        except vision_service.VisionAPIError as e:  # type: ignore[attr-defined]
+            logger.warning("Vision identify failed", extra={"error": str(e)})
+            raise HTTPException(status_code=400, detail=f"Vision error: {e}")
         logger.info("Vision candidates returned", extra={
             "identifyId": identify_id,
             "numCandidates": len(candidates) if candidates else 0,

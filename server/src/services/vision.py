@@ -9,6 +9,8 @@ from ..schemas.guide import IdentifyRequest, Candidate
 import logging
 
 class VisionService:
+    class VisionAPIError(Exception):
+        pass
     """Service for image identification using Vision LLM"""
     
     def __init__(self):
@@ -124,10 +126,15 @@ class VisionService:
             return self._parse_vision_response({"content": content})
         except asyncio.TimeoutError:
             self.logger.warning("vision API timeout")
-            return self._get_fallback_candidates()
+            raise self.VisionAPIError("Vision service timeout")
         except Exception as e:
             self.logger.exception(f"vision API call error: {e}")
-            return self._get_fallback_candidates()
+            # Try to surface OpenAI error message if available
+            try:
+                msg = str(getattr(e, "message", None) or getattr(e, "error", None) or e)
+            except Exception:
+                msg = str(e)
+            raise self.VisionAPIError(msg)
     
     def _parse_vision_response(self, response: dict) -> List[Candidate]:
         """
