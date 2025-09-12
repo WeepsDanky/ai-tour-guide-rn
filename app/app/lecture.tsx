@@ -1,29 +1,22 @@
 import React, { useEffect, useRef, useState } from 'react';
-import {
-  View,
-  Text,
-  Image,
-  StyleSheet,
-  SafeAreaView,
-  TouchableOpacity,
-  StatusBar,
-  Alert,
-  BackHandler,
-} from 'react-native';
+import { View, SafeAreaView, StatusBar, Alert, BackHandler } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { tokens } from '../lib/tokens';
 import { useGuideStore } from '../state/guide.store';
 import { useHistoryStore } from '../state/history.store';
 import { AudioPlayer } from '../components/lecture/AudioPlayer';
-import { ConfidenceBadge } from '../components/lecture/ConfidenceBadge';
 import { LectureCards } from '../components/lecture/LectureCards';
 import { ActionArea } from '../components/lecture/ActionArea';
 import { openGuideStream } from '../lib/stream';
 import { getDeviceId } from '../lib/device';
 import { HistoryStorage } from '../lib/storage';
 import type { GuideMeta, HistoryItem, GuideCard } from '../types/schema';
+import { lectureStyles } from '../styles/lecture.styles';
+import { HeaderBar } from '../components/lecture/HeaderBar';
+import { Cover } from '../components/lecture/Cover';
+import { LoadingView } from '../components/lecture/LoadingView';
+import { ErrorView } from '../components/lecture/ErrorView';
 
 export default function LectureScreen() {
   const router = useRouter();
@@ -251,22 +244,10 @@ export default function LectureScreen() {
   // 渲染加载状态
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={lectureStyles.container}>
         <StatusBar barStyle="light-content" backgroundColor={tokens.colors.background} />
-        
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={handleBackPress}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Ionicons name="arrow-back" size={24} color={tokens.colors.text} />
-          </TouchableOpacity>
-        </View>
-        
-        <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>正在连接...</Text>
-        </View>
+        <HeaderBar onBack={handleBackPress} confidence={undefined} />
+        <LoadingView title="正在连接..." />
       </SafeAreaView>
     );
   }
@@ -274,92 +255,31 @@ export default function LectureScreen() {
   // 渲染错误状态
   if (error) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={lectureStyles.container}>
         <StatusBar barStyle="light-content" backgroundColor={tokens.colors.background} />
-        
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={handleBackPress}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Ionicons name="arrow-back" size={24} color={tokens.colors.text} />
-          </TouchableOpacity>
-        </View>
-        
-        <View style={styles.errorContainer}>
-          <Ionicons name="warning-outline" size={48} color={tokens.colors.semantic.error} />
-          <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={() => { if(router.canGoBack()) router.back()}}>
-            <Text style={styles.retryButtonText}>返回重试</Text>
-          </TouchableOpacity>
-        </View>
+        <HeaderBar onBack={handleBackPress} confidence={undefined} />
+        <ErrorView message={error} onRetry={() => { if (router.canGoBack()) router.back(); }} />
       </SafeAreaView>
     );
   }
   
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={lectureStyles.container}>
       <StatusBar barStyle="light-content" backgroundColor={tokens.colors.background} />
-      
-      {/* 头部 */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={handleBackPress}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
-          <Ionicons name="arrow-back" size={24} color={tokens.colors.text} />
-        </TouchableOpacity>
-        
-        {currentMeta && (
-          <ConfidenceBadge 
-            confidence={currentMeta.confidence}
-            size="small"
-            showLabel={false}
-          />
-        )}
-      </View>
-      
-      {/* 封面区域 */}
+      <HeaderBar onBack={handleBackPress} confidence={currentMeta?.confidence} />
       {params.imageUri && (
-        <View style={styles.coverContainer}>
-          <Image 
-            source={{ uri: params.imageUri }} 
-            style={styles.coverImage}
-            resizeMode="cover"
-          />
-          
-          {/* 遮罩 */}
-          <View style={styles.coverOverlay} />
-          
-          {/* 标题 */}
-          {currentMeta && (
-            <View style={styles.titleContainer}>
-              <Text style={styles.title}>{currentMeta?.title || '未知标题'}</Text>
-            </View>
-          )}
-        </View>
+        <Cover imageUri={params.imageUri} title={currentMeta?.title || '未知标题'} />
       )}
-      
-      {/* 内容区域 */}
-      <View style={styles.contentContainer}>
-        {/* 音频播放器 */}
+      <View style={lectureStyles.contentContainer}>
         <AudioPlayer
           playerState={playbackState}
           transcript={transcript}
-          onPlayPause={() => setPlaybackState({isPlaying: !playbackState.isPlaying})}
+          onPlayPause={() => setPlaybackState({ isPlaying: !playbackState.isPlaying })}
           onSeek={() => {}}
           onSpeedChange={() => {}}
           onRegenerate={() => {}}
         />
-        
-        {/* 卡片组 */}
-        {cards && (
-          <LectureCards cards={cards} />
-        )}
-        
-        {/* 动作区域 */}
+        {cards && <LectureCards cards={cards} />}
         <ActionArea
           onContinue={handleContinue}
           onFavorite={handleFavorite}
@@ -373,100 +293,3 @@ export default function LectureScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: tokens.colors.background,
-  },
-  
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: tokens.spacing.lg,
-    paddingVertical: tokens.spacing.md,
-    zIndex: 10,
-  },
-  
-  backButton: {
-    padding: 8, // Increase touch area
-  },
-  
-  coverContainer: {
-    height: 240,
-    position: 'relative',
-  },
-  
-  coverImage: {
-    width: '100%',
-    height: '100%',
-  },
-  
-  coverOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.4)', // Using rgba for overlay
-  },
-  
-  titleContainer: {
-    position: 'absolute',
-    bottom: tokens.spacing.lg,
-    left: tokens.spacing.lg,
-    right: tokens.spacing.lg,
-  },
-  
-  title: {
-    fontSize: tokens.typography.fontSize.h1,
-    lineHeight: tokens.typography.lineHeight.h1,
-    color: tokens.colors.text,
-    fontFamily: tokens.typography.fontFamily.chinese,
-    fontWeight: '700',
-  },
-  
-  contentContainer: {
-    flex: 1,
-    paddingHorizontal: 0,
-  },
-  
-  loadingContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  
-  loadingText: {
-    fontSize: tokens.typography.fontSize.body,
-    color: tokens.colors.text,
-    fontFamily: tokens.typography.fontFamily.chinese,
-  },
-  
-  errorContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: tokens.spacing.xl,
-  },
-  
-  errorText: {
-    fontSize: tokens.typography.fontSize.body,
-    color: tokens.colors.text,
-    fontFamily: tokens.typography.fontFamily.chinese,
-    textAlign: 'center',
-    marginTop: tokens.spacing.md,
-    marginBottom: tokens.spacing.lg,
-  },
-  
-  retryButton: {
-    backgroundColor: tokens.colors.accent.architecture,
-    paddingHorizontal: tokens.spacing.lg,
-    paddingVertical: tokens.spacing.md,
-    borderRadius: tokens.borderRadius.md,
-  },
-  
-  retryButtonText: {
-    fontSize: tokens.typography.fontSize.body,
-    color: tokens.colors.text,
-    fontFamily: tokens.typography.fontFamily.chinese,
-    fontWeight: '600',
-  },
-});

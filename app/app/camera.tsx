@@ -1,29 +1,11 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { View, StyleSheet, Alert, AppState, Text } from 'react-native';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { View, StyleSheet, Alert, AppState } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { isCameraSupported, getCameraStatusMessage } from '../lib/expo-go-detector';
-
-// Conditionally import camera components only if supported
-let Camera: any = null;
-let useCameraDevice: any = null; // FIX: Changed from useCameraDevices
-let useCameraPermission: any = null;
-
-if (isCameraSupported()) {
-  try {
-    const visionCamera = require('react-native-vision-camera');
-    Camera = visionCamera.Camera;
-    useCameraDevice = visionCamera.useCameraDevice; // FIX: Import the correct hook for v4
-    useCameraPermission = visionCamera.useCameraPermission;
-  } catch (error) {
-    console.warn('react-native-vision-camera not available:', error);
-  }
-}
-
-import { tokens } from '../lib/tokens';
 import { useGuideStore } from '../state/guide.store';
 import { useHistoryStore } from '../state/history.store';
 import { mockIdentifyResponse, mockDelay } from '../data/data';
@@ -31,10 +13,42 @@ import { CameraTopBar } from '../components/camera/CameraTopBar';
 import { CameraBottomBar } from '../components/camera/CameraBottomBar';
 import { Viewfinder } from '../components/camera/Viewfinder';
 import { HistoryBar } from '../components/camera/HistoryBar';
+import { FallbackStatus } from '../components/camera/FallbackStatus';
+import { cameraStyles } from '../styles/camera.styles';
 import { IdentifyResult, GeoLocation } from '../types/schema';
 
+// Conditionally import camera components only if supported
+let Camera: any = null;
+let useCameraDeviceReal: any = null; // FIX: Changed from useCameraDevices
+let useCameraPermissionReal: any = null;
+
+if (isCameraSupported()) {
+  try {
+    const visionCamera = require('react-native-vision-camera');
+    Camera = visionCamera.Camera;
+    useCameraDeviceReal = visionCamera.useCameraDevice; // v4
+    useCameraPermissionReal = visionCamera.useCameraPermission;
+  } catch (error) {
+    console.warn('react-native-vision-camera not available:', error);
+  }
+}
+
+// Compat hooks: always callable, even if the library is unavailable
+const useCameraPermissionCompat: () => { hasPermission: boolean; requestPermission: () => Promise<boolean> } =
+  useCameraPermissionReal ??
+  function useCameraPermissionCompatFallback() {
+    const [hasPermission] = React.useState(false);
+    const requestPermission = useCallback(async () => false, []);
+    return { hasPermission, requestPermission };
+  };
+
+const useCameraDeviceCompat: (position: 'back' | 'front') => any =
+  useCameraDeviceReal ??
+  function useCameraDeviceCompatFallback() {
+    return null;
+  };
+
 const IDENTIFY_DELAY = 800; // 预识别延迟
-const IDENTIFY_TIMEOUT = 5000; // 预识别超时
 
 export default function CameraScreen() {
   console.log('[CameraScreen] Component rendering...');
@@ -45,11 +59,10 @@ export default function CameraScreen() {
   
   // 权限和设备 - only if camera is supported
   const cameraSupported = isCameraSupported();
-  const cameraHooks = cameraSupported && useCameraPermission ? useCameraPermission() : { hasPermission: false, requestPermission: () => Promise.resolve(false) };
-  const { hasPermission, requestPermission } = cameraHooks;
+  const { hasPermission, requestPermission } = useCameraPermissionCompat();
   
   // FIX: Use the correct hook from Vision Camera v4
-  const device = cameraSupported && useCameraDevice ? useCameraDevice('back') : null;
+  const device = useCameraDeviceCompat('back');
 
   console.log(`[CameraScreen] Status - Supported: ${cameraSupported}, Permission: ${hasPermission}`);
   console.log(`[CameraScreen] Selected device (back): ${device ? `ID: ${device.id}, Name: ${device.name}` : 'None'}`);
@@ -60,12 +73,12 @@ export default function CameraScreen() {
   const [isIdentifying, setIsIdentifying] = useState(false);
   const [identifyResult, setIdentifyResult] = useState<IdentifyResult | null>(null);
   const [currentLocation, setCurrentLocation] = useState<GeoLocation | null>(null);
-  const [lightingCondition, setLightingCondition] = useState<'good' | 'poor' | 'backlight'>('good');
+  const [lightingCondition] = useState<'good' | 'poor' | 'backlight'>('good');
   const [showAlignmentHint, setShowAlignmentHint] = useState(false);
   
   // Store
-  const { setMeta, setPrefs } = useGuideStore();
-  const { items: historyItems, addItem } = useHistoryStore();
+  const { setMeta } = useGuideStore();
+  const { items: historyItems } = useHistoryStore();
   
   // 获取位置权限和当前位置
   useEffect(() => {
@@ -114,7 +127,7 @@ export default function CameraScreen() {
     console.log(`[CameraScreen] Camera permission check: hasPermission = ${hasPermission}`);
     if (!hasPermission) {
       console.log('[CameraScreen] Requesting camera permission...');
-      requestPermission().then((granted) => {
+      requestPermission().then((granted: boolean) => {
         console.log(`[CameraScreen] Camera permission request result: ${granted}`);
       });
     }
@@ -313,30 +326,15 @@ export default function CameraScreen() {
     console.log('[CameraScreen] Rendering fallback: Camera not supported (likely Expo Go).');
     return (
       <SafeAreaProvider>
-        <View style={styles.container}>
+        <View style={cameraStyles.container}>
           <StatusBar style="light" />
-          
-          {/* Expo Go Fallback UI */}
-          <View style={styles.fallbackContainer}>
-            <Text style={styles.fallbackTitle}>Camera Not Available</Text>
-            <Text style={styles.fallbackMessage}>{getCameraStatusMessage()}</Text>
-            
-            {/* Import from gallery button */}
-            <View style={styles.fallbackActions}>
-              <Text style={styles.fallbackSubtitle}>You can still use the app by importing images:</Text>
-              {/* Use existing import functionality */}
-            </View>
-          </View>
-          
-          {/* Top bar with import */}
-          <CameraTopBar onImportPress={handleImport} />
-          
-          {/* Bottom bar without camera controls */}
-          <View style={styles.fallbackBottomBar}>
-            <Text style={styles.fallbackBottomText}>Import photos to get started</Text>
-          </View>
-          
-          {/* History bar */}
+          <FallbackStatus
+            title="Camera Not Available"
+            message={getCameraStatusMessage()}
+            subtitle="You can still use the app by importing images:"
+            bottomText="Import photos to get started"
+            renderTopBar={<CameraTopBar onImportPress={handleImport} />}
+          />
           <HistoryBar
             recentItems={historyItems.slice(0, 3)}
             onSwipeUp={handleHistorySwipeUp}
@@ -351,12 +349,12 @@ export default function CameraScreen() {
     console.log('[CameraScreen] Rendering fallback: Camera permission not granted.');
     return (
       <SafeAreaProvider>
-        <View style={styles.container}>
+        <View style={cameraStyles.container}>
           <StatusBar style="light" />
-          <View style={styles.fallbackContainer}>
-            <Text style={styles.fallbackTitle}>Camera Permission Required</Text>
-            <Text style={styles.fallbackMessage}>Please grant camera permission to use this feature</Text>
-          </View>
+          <FallbackStatus
+            title="Camera Permission Required"
+            message="Please grant camera permission to use this feature"
+          />
         </View>
       </SafeAreaProvider>
     );
@@ -367,12 +365,12 @@ export default function CameraScreen() {
     console.log('[CameraScreen] Rendering loading screen: Waiting for camera device...');
     return (
       <SafeAreaProvider>
-        <View style={styles.container}>
+        <View style={cameraStyles.container}>
           <StatusBar style="light" />
-          <View style={styles.fallbackContainer}>
-            <Text style={styles.fallbackTitle}>Initializing Camera</Text>
-            <Text style={styles.fallbackMessage}>Searching for a camera device...</Text>
-          </View>
+          <FallbackStatus
+            title="Initializing Camera"
+            message="Searching for a camera device..."
+          />
         </View>
       </SafeAreaProvider>
     );
@@ -381,7 +379,7 @@ export default function CameraScreen() {
   console.log('[CameraScreen] Rendering main camera view.');
   return (
     <SafeAreaProvider>
-      <View style={styles.container}>
+      <View style={cameraStyles.container}>
         <StatusBar style="light" />
         
         {/* 相机视图 - only render if Camera component is available */}
@@ -397,7 +395,7 @@ export default function CameraScreen() {
               // 相机初始化后开始预识别
               scheduleIdentification();
             }}
-            onError={(error) => {
+            onError={(error: Error) => {
               console.error('[CameraScreen] Camera runtime error:', error);
               Alert.alert('Camera Error', error.message);
             }}
@@ -435,52 +433,3 @@ export default function CameraScreen() {
     </SafeAreaProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: tokens.colors.background,
-  },
-  fallbackContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: tokens.spacing.xl,
-  },
-  fallbackTitle: {
-    fontSize: tokens.typography.fontSize.h2,
-    fontWeight: '700',
-    color: tokens.colors.text,
-    textAlign: 'center',
-    marginBottom: tokens.spacing.md,
-  },
-  fallbackMessage: {
-    fontSize: tokens.typography.fontSize.body,
-    color: tokens.colors.text,
-    textAlign: 'center',
-    lineHeight: 24,
-    marginBottom: tokens.spacing.lg,
-  },
-  fallbackActions: {
-    alignItems: 'center',
-  },
-  fallbackSubtitle: {
-    fontSize: tokens.typography.fontSize.caption,
-    color: tokens.colors.text,
-    textAlign: 'center',
-    marginBottom: tokens.spacing.md,
-  },
-  fallbackBottomBar: {
-    position: 'absolute',
-    bottom: 120,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-    paddingHorizontal: tokens.spacing.lg,
-  },
-  fallbackBottomText: {
-    fontSize: tokens.typography.fontSize.caption,
-    color: tokens.colors.text,
-    textAlign: 'center',
-  },
-});
