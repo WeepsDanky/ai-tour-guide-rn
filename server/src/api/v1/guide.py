@@ -122,11 +122,13 @@ async def guide_stream(websocket: WebSocket):
                     
                 except Exception as e:
                     ws_logger.exception(f"WS[{conn_id}] init handling error: {e}")
-                    await websocket.send_json({
+                    err = {
                         "type": "error",
                         "code": "INIT_ERROR",
                         "message": f"Failed to initialize guide stream: {str(e)}"
-                    })
+                    }
+                    ws_logger.error(f"WS[{conn_id}] send -> {err}")
+                    await websocket.send_json(err)
                     
             elif message_type == "replay":
                 try:
@@ -138,11 +140,13 @@ async def guide_stream(websocket: WebSocket):
                     await handle_replay(websocket, replay_message)
                 except Exception as e:
                     ws_logger.exception(f"WS[{conn_id}] replay handling error: {e}")
-                    await websocket.send_json({
+                    err = {
                         "type": "error",
                         "code": "REPLAY_ERROR",
                         "message": f"Failed to replay guide: {str(e)}"
-                    })
+                    }
+                    ws_logger.error(f"WS[{conn_id}] send -> {err}")
+                    await websocket.send_json(err)
                     
             elif message_type == "nack":
                 try:
@@ -153,11 +157,13 @@ async def guide_stream(websocket: WebSocket):
                     await handle_nack(websocket, nack_message)
                 except Exception as e:
                     ws_logger.exception(f"WS[{conn_id}] nack handling error: {e}")
-                    await websocket.send_json({
+                    err = {
                         "type": "error",
                         "code": "NACK_ERROR",
                         "message": f"Failed to handle nack: {str(e)}"
-                    })
+                    }
+                    ws_logger.error(f"WS[{conn_id}] send -> {err}")
+                    await websocket.send_json(err)
                     
             elif message_type == "close":
                 try:
@@ -170,22 +176,26 @@ async def guide_stream(websocket: WebSocket):
                     
             else:
                 ws_logger.warning(f"WS[{conn_id}] unknown message type: {message_type}")
-                await websocket.send_json({
+                err = {
                     "type": "error",
                     "code": "UNKNOWN_MESSAGE_TYPE",
                     "message": f"Unknown message type: {message_type}"
-                })
+                }
+                ws_logger.error(f"WS[{conn_id}] send -> {err}")
+                await websocket.send_json(err)
                 
     except WebSocketDisconnect:
         ws_logger.info(f"WS[{conn_id}] disconnected")
     except Exception as e:
         ws_logger.exception(f"WS[{conn_id}] unexpected error: {e}")
         try:
-            await websocket.send_json({
+            err = {
                 "type": "error",
                 "code": "INTERNAL_ERROR",
                 "message": "Internal server error"
-            })
+            }
+            ws_logger.error(f"WS[{conn_id}] send -> {err}")
+            await websocket.send_json(err)
         except:
             pass  # Connection might be closed
     finally:
@@ -210,7 +220,9 @@ async def handle_replay(websocket: WebSocket, replay_message: guide_schemas.Repl
 
         segments = await mapper.get_guide_segments(guide_id)
         if not segments:
-            await websocket.send_json({"type": "error", "code": "NOT_FOUND", "message": "Guide not found"})
+            err = {"type": "error", "code": "NOT_FOUND", "message": "Guide not found"}
+            logging.getLogger("ws.guide.replay").error(f"send -> {err}")
+            await websocket.send_json(err)
             return
 
         sent_any = False
@@ -235,7 +247,9 @@ async def handle_replay(websocket: WebSocket, replay_message: guide_schemas.Repl
                 except Exception as e:
                     ws_logger.error(f"Failed to replay segment {segment.seq}: {e}")
         if not sent_any:
-            await websocket.send_json({"type": "error", "code": "NO_SEGMENTS", "message": "No segments to replay from position"})
+            err = {"type": "error", "code": "NO_SEGMENTS", "message": "No segments to replay from position"}
+            ws_logger.error(f"send -> {err}")
+            await websocket.send_json(err)
     except Exception as e:
         logging.getLogger("ws.guide.replay").exception(f"Error handling replay: {e}")
         raise
@@ -253,11 +267,13 @@ async def handle_nack(websocket: WebSocket, nack_message: guide_schemas.NackMess
         # Expect the client to reconnect with replay for now.
         ws_logger = logging.getLogger("ws.guide.nack")
         ws_logger.warning(f"NACK received for seq {nack_message.seq} - advise client to use replay")
-        await websocket.send_json({
+        err = {
             "type": "error",
             "code": "NACK_USE_REPLAY",
             "message": f"Use replay to recover missing segment {nack_message.seq}"
-        })
+        }
+        ws_logger.error(f"send -> {err}")
+        await websocket.send_json(err)
     except Exception as e:
         logging.getLogger("ws.guide.nack").exception(f"Error handling NACK: {e}")
         raise
