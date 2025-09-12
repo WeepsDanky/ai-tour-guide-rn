@@ -4,7 +4,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+// Note: Root layout provides SafeAreaProvider
 import { isCameraSupported, getCameraStatusMessage } from '../lib/expo-go-detector';
 import { useGuideStore } from '../state/guide.store';
 import { useHistoryStore } from '../state/history.store';
@@ -234,9 +234,15 @@ export default function CameraScreen() {
         coverImage: lectureData.imageUri,
       });
       
-      // 跳转到讲解页面
+      // 跳转到讲解页面，携带参数
       console.log('[CameraScreen] Navigating to /lecture with data:', lectureData);
-      router.push('/lecture');
+      router.push({
+        pathname: '/lecture',
+        params: {
+          imageUri: lectureData.imageUri,
+          identifyId: lectureData.identifyId,
+        },
+      });
       
     } catch (error) {
       console.error('[CameraScreen] Capture failed:', error);
@@ -268,9 +274,14 @@ export default function CameraScreen() {
           coverImage: asset.uri,
         });
         
-        // 跳转到讲解页面
+        // 跳转到讲解页面，携带参数
         console.log('[CameraScreen] Image imported, navigating to /lecture with URI:', asset.uri);
-        router.push('/lecture');
+        router.push({
+          pathname: '/lecture',
+          params: {
+            imageUri: asset.uri,
+          },
+        });
       } else {
         console.log('[CameraScreen] Image import cancelled.');
       }
@@ -306,7 +317,7 @@ export default function CameraScreen() {
       coverImage: item.coverImage,
     });
     
-    router.push('/lecture');
+    router.push({ pathname: '/lecture', params: { isReplay: 'true', guideId: item.id } });
   };
   
   // 打开历史抽屉
@@ -325,38 +336,34 @@ export default function CameraScreen() {
   if (!cameraSupported) {
     console.log('[CameraScreen] Rendering fallback: Camera not supported (likely Expo Go).');
     return (
-      <SafeAreaProvider>
-        <View style={cameraStyles.container}>
-          <StatusBar style="light" />
-          <FallbackStatus
-            title="Camera Not Available"
-            message={getCameraStatusMessage()}
-            subtitle="You can still use the app by importing images:"
-            bottomText="Import photos to get started"
-            renderTopBar={<CameraTopBar onImportPress={handleImport} />}
-          />
-          <HistoryBar
-            recentItems={historyItems.slice(0, 3)}
-            onSwipeUp={handleHistorySwipeUp}
-            onItemPress={handleHistoryItemPress}
-          />
-        </View>
-      </SafeAreaProvider>
+      <View style={cameraStyles.container}>
+        <StatusBar style="light" />
+        <FallbackStatus
+          title="Camera Not Available"
+          message={getCameraStatusMessage()}
+          subtitle="You can still use the app by importing images:"
+          bottomText="Import photos to get started"
+          renderTopBar={<CameraTopBar onImportPress={handleImport} />}
+        />
+        <HistoryBar
+          recentItems={historyItems.slice(0, 3)}
+          onSwipeUp={handleHistorySwipeUp}
+          onItemPress={handleHistoryItemPress}
+        />
+      </View>
     );
   }
   
   if (!hasPermission) {
     console.log('[CameraScreen] Rendering fallback: Camera permission not granted.');
     return (
-      <SafeAreaProvider>
-        <View style={cameraStyles.container}>
-          <StatusBar style="light" />
-          <FallbackStatus
-            title="Camera Permission Required"
-            message="Please grant camera permission to use this feature"
-          />
-        </View>
-      </SafeAreaProvider>
+      <View style={cameraStyles.container}>
+        <StatusBar style="light" />
+        <FallbackStatus
+          title="Camera Permission Required"
+          message="Please grant camera permission to use this feature"
+        />
+      </View>
     );
   }
   
@@ -364,72 +371,68 @@ export default function CameraScreen() {
   if (device == null) {
     console.log('[CameraScreen] Rendering loading screen: Waiting for camera device...');
     return (
-      <SafeAreaProvider>
-        <View style={cameraStyles.container}>
-          <StatusBar style="light" />
-          <FallbackStatus
-            title="Initializing Camera"
-            message="Searching for a camera device..."
-          />
-        </View>
-      </SafeAreaProvider>
+      <View style={cameraStyles.container}>
+        <StatusBar style="light" />
+        <FallbackStatus
+          title="Initializing Camera"
+          message="Searching for a camera device..."
+        />
+      </View>
     );
   }
   
   console.log('[CameraScreen] Rendering main camera view.');
   return (
-    <SafeAreaProvider>
-      <View style={cameraStyles.container}>
-        <StatusBar style="light" />
-        
-        {/* 相机视图 - only render if Camera component is available */}
-        {Camera && (
-          <Camera
-            ref={camera}
-            style={StyleSheet.absoluteFill}
-            device={device}
-            isActive={isActive && !isCapturing}
-            photo={true}
-            onInitialized={() => {
-              console.log('[CameraScreen] Camera initialized.');
-              // 相机初始化后开始预识别
-              scheduleIdentification();
-            }}
-            onError={(error: Error) => {
-              console.error('[CameraScreen] Camera runtime error:', error);
-              Alert.alert('Camera Error', error.message);
-            }}
-          />
-        )}
-        
-        {/* 顶部栏 */}
-        <CameraTopBar onImportPress={handleImport} />
-        
-        {/* 取景器 */}
-        <Viewfinder
-          identifyResult={identifyResult || undefined}
-          isIdentifying={isIdentifying}
-          onFramePress={handleViewfinderPress}
+    <View style={cameraStyles.container}>
+      <StatusBar style="light" />
+      
+      {/* 相机视图 - only render if Camera component is available */}
+      {Camera && (
+        <Camera
+          ref={camera}
+          style={StyleSheet.absoluteFill}
+          device={device}
+          isActive={isActive && !isCapturing}
+          photo={true}
+          onInitialized={() => {
+            console.log('[CameraScreen] Camera initialized.');
+            // 相机初始化后开始预识别
+            scheduleIdentification();
+          }}
+          onError={(error: Error) => {
+            console.error('[CameraScreen] Camera runtime error:', error);
+            Alert.alert('Camera Error', error.message);
+          }}
         />
-        
-        {/* 底部控制栏 */}
-        <CameraBottomBar
-          onShutterPress={handleShutter}
-          onPreferencesPress={handlePreferences}
-          onAlignmentHelpPress={handleAlignmentHelp}
-          isCapturing={isCapturing}
-          shutterDisabled={!device}
-          showAlignmentHint={showAlignmentHint}
-          lightingCondition={lightingCondition}
-        />
-        
-        {/* 历史条 */}
-        <HistoryBar
-          recentItems={historyItems.slice(0, 3)}
-          onSwipeUp={handleHistorySwipeUp}
-          onItemPress={handleHistoryItemPress}
-        />
-      </View>
-    </SafeAreaProvider>
+      )}
+      
+      {/* 顶部栏 */}
+      <CameraTopBar onImportPress={handleImport} />
+      
+      {/* 取景器 */}
+      <Viewfinder
+        identifyResult={identifyResult || undefined}
+        isIdentifying={isIdentifying}
+        onFramePress={handleViewfinderPress}
+      />
+      
+      {/* 底部控制栏 */}
+      <CameraBottomBar
+        onShutterPress={handleShutter}
+        onPreferencesPress={handlePreferences}
+        onAlignmentHelpPress={handleAlignmentHelp}
+        isCapturing={isCapturing}
+        shutterDisabled={!device}
+        showAlignmentHint={showAlignmentHint}
+        lightingCondition={lightingCondition}
+      />
+      
+      {/* 历史条 */}
+      <HistoryBar
+        recentItems={historyItems.slice(0, 3)}
+        onSwipeUp={handleHistorySwipeUp}
+        onItemPress={handleHistoryItemPress}
+      />
+    </View>
   );
 }

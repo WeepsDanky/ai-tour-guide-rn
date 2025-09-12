@@ -134,7 +134,7 @@ export function ShutterButton({ onPress, disabled = false, isCapturing = false }
               : tokens.colors.background,
             borderWidth: isCapturing ? 0 : 2,
             borderColor: tokens.colors.text,
-            transform: isCapturing ? [{ rotate: rotateInterpolate }] : undefined,
+            transform: isCapturing ? [{ rotate: rotateInterpolate }] : [],
           }}
         >
           {/* 拍摄中的指示器 */}
