@@ -43,7 +43,7 @@ export default function LectureScreen() {
   
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [autoReturnTimer, setAutoReturnTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
+  // Removed auto-return behavior to keep user on lecture screen until explicit action
   const streamRef = useRef<(() => void) | null>(null);
   const historyStorage = useRef(HistoryStorage);
   
@@ -100,11 +100,6 @@ export default function LectureScreen() {
             },
             onAudioEnd: () => {
               setPlaybackState({ isPlaying: false });
-              // 播放结束后1.2秒自动返回相机
-              const timer = setTimeout(() => {
-                handleAutoReturn();
-              }, 1200);
-              setAutoReturnTimer(timer);
             },
             onCards: (cardsData: GuideCard[]) => {
               setCards(cardsData);
@@ -153,9 +148,7 @@ export default function LectureScreen() {
         streamRef.current();
         streamRef.current = null;
       }
-      if (autoReturnTimer) {
-        clearTimeout(autoReturnTimer);
-      }
+      // No auto-return timer to clear
     };
   }, [imageUri, identifyId, guideIdParam, isReplay]);
   
@@ -171,31 +164,11 @@ export default function LectureScreen() {
     return () => backHandler.remove();
   }, []);
   
-  // 处理自动返回
-  const handleAutoReturn = () => {
-    if (autoReturnTimer) {
-      clearTimeout(autoReturnTimer);
-      setAutoReturnTimer(null);
-    }
-    
-    // 清理状态
-    reset();
-    
-    // 返回相机页面
-    if(router.canGoBack()){
-      router.back();
-    }
-  };
+  // Removed auto-return behavior
   
   // 处理手动返回
   const handleBackPress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    
-    // 取消自动返回
-    if (autoReturnTimer) {
-      clearTimeout(autoReturnTimer);
-      setAutoReturnTimer(null);
-    }
     
     // 清理状态
     reset();
