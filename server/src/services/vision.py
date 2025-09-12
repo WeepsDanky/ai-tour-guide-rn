@@ -118,7 +118,7 @@ class VisionService:
             self.logger.debug("calling vision API with any_llm")
             response = await acompletion(
                 provider="openai",
-                model="gpt-4.1",
+                model="gpt-5-nano",
                 messages=[
                     {
                         "role": "user",

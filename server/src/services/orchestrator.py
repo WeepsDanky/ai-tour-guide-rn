@@ -112,7 +112,7 @@ class NarrativeOrchestrator:
             buffer = ""
             stream_iter = await acompletion(
                 provider=self.llm_provider,
-                model="gpt-4-turbo",
+                model="gpt-5-nano",
                 messages=messages,
                 stream=True,
                 max_tokens=2000,
