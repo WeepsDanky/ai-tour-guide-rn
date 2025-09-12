@@ -4,6 +4,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { useIsFocused } from '@react-navigation/native';
 // Note: Root layout provides SafeAreaProvider
 import { isCameraSupported, getCameraStatusMessage } from '../lib/expo-go-detector';
 import { useGuideStore } from '../state/guide.store';
@@ -51,7 +52,10 @@ const useCameraDeviceCompat: (position: 'back' | 'front') => any =
 const IDENTIFY_DELAY = 800; // 预识别延迟
 
 export default function CameraScreen() {
-  console.log('[CameraScreen] Component rendering...');
+  const isFocused = useIsFocused();
+  if (isFocused) {
+    console.log('[CameraScreen] Component rendering...');
+  }
   const router = useRouter();
   const camera = useRef<any>(null);
   const identifyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -77,7 +81,7 @@ export default function CameraScreen() {
   const [showAlignmentHint, setShowAlignmentHint] = useState(false);
   
   // Store
-  const { setMeta } = useGuideStore();
+  const setMeta = useGuideStore((s) => s.setMeta);
   const { items: historyItems } = useHistoryStore();
   
   // 获取位置权限和当前位置
@@ -121,6 +125,14 @@ export default function CameraScreen() {
       subscription?.remove();
     };
   }, []);
+
+  // 焦点变化时控制相机活跃状态与识别计时器
+  useEffect(() => {
+    setIsActive(isFocused);
+    if (!isFocused) {
+      cancelIdentification();
+    }
+  }, [isFocused]);
   
   // 请求相机权限
   useEffect(() => {
@@ -381,6 +393,11 @@ export default function CameraScreen() {
     );
   }
   
+  if (!isFocused) {
+    // 避免非焦点状态下渲染相机视图，减少无效渲染
+    return <View style={cameraStyles.container} />;
+  }
+
   console.log('[CameraScreen] Rendering main camera view.');
   return (
     <View style={cameraStyles.container}>
@@ -392,7 +409,7 @@ export default function CameraScreen() {
           ref={camera}
           style={StyleSheet.absoluteFill}
           device={device}
-          isActive={isActive && !isCapturing}
+          isActive={isFocused && isActive && !isCapturing}
           photo={true}
           onInitialized={() => {
             console.log('[CameraScreen] Camera initialized.');
