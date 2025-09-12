@@ -5,13 +5,16 @@ import base64
 import uuid
 from typing import AsyncGenerator, Dict, Any, List
 from datetime import datetime
-import aiohttp
+from any_llm import acompletion
+from openai import AsyncOpenAI
 from fastapi import WebSocket
 from ..schemas.guide import (
     InitMessage, MetaMessage, TextMessage, EosMessage, ErrorMessage,
     AudioSegmentInfo
 )
 from ..core.config import settings
+from ..mappers.guide_mapper import GuideMapper
+from ..core.supabase import supabase_admin
 import logging
 
 class NarrativeOrchestrator:
@@ -26,6 +29,9 @@ class NarrativeOrchestrator:
         self.transcript_parts: List[str] = []
         self.total_duration_ms = 0
         self.logger = logging.getLogger("service.orchestrator")
+        self.llm_provider = "openai"
+        self.tts_client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+        self.guide_mapper = GuideMapper(supabase_admin)
     
     async def stream(self):
         """Main streaming orchestration method"""
@@ -96,71 +102,36 @@ class NarrativeOrchestrator:
         return context
     
     async def _stream_and_chunk_llm(self, context: str) -> AsyncGenerator[str, None]:
-        """Stream from LLM and chunk into sentences"""
+        """Stream from LLM via any_llm and chunk into sentences"""
         try:
             self.logger.info("LLM stream begin", extra={"guideId": self.guide_id})
-            async with aiohttp.ClientSession() as session:
-                payload = {
-                    "model": "gpt-4",  # Replace with actual model
-                    "messages": [
-                        {
-                            "role": "system",
-                            "content": "你是一位专业的导游，为游客提供生动有趣的景点介绍。"
-                        },
-                        {
-                            "role": "user", 
-                            "content": context
-                        }
-                    ],
-                    "stream": True,
-                    "max_tokens": 2000,
-                    "temperature": 0.7
-                }
-                
-                headers = {
-                    "Authorization": f"Bearer {settings.LLM_API_KEY}",
-                    "Content-Type": "application/json"
-                }
-                
-                async with session.post(
-                    settings.LLM_ENDPOINT,
-                    json=payload,
-                    headers=headers
-                ) as response:
-                    if response.status != 200:
-                        self.logger.warning("LLM non-200", extra={"status": response.status})
-                        yield "抱歉，无法获取导览信息。"
-                        return
-                    
-                    buffer = ""
-                    async for line in response.content:
-                        if line:
-                            line_str = line.decode('utf-8').strip()
-                            if line_str.startswith('data: '):
-                                data_str = line_str[6:]
-                                if data_str == '[DONE]':
-                                    break
-                                
-                                try:
-                                    data = json.loads(data_str)
-                                    delta = data.get('choices', [{}])[0].get('delta', {}).get('content', '')
-                                    if delta:
-                                        buffer += delta
-                                        self.logger.debug("LLM delta", extra={"len": len(delta)})
-                                        
-                                        # Check for sentence endings
-                                        sentences = self._extract_sentences(buffer)
-                                        for sentence in sentences[:-1]:  # Keep last partial sentence in buffer
-                                            yield sentence
-                                        buffer = sentences[-1] if sentences else ""
-                                        
-                                except json.JSONDecodeError:
-                                    continue
-                    
-                    # Yield remaining buffer
-                    if buffer.strip():
-                        yield buffer
-                        
+            messages = [
+                {"role": "system", "content": "你是一位专业的导游，为游客提供生动有趣的景点介绍。"},
+                {"role": "user", "content": context},
+            ]
+            buffer = ""
+            async for chunk in acompletion(
+                provider=self.llm_provider,
+                model="gpt-4-turbo",
+                messages=messages,
+                stream=True,
+                max_tokens=2000,
+                temperature=0.7,
+                api_config={"api_key": settings.OPENAI_API_KEY},
+            ):
+                try:
+                    delta = chunk.choices[0].delta.content or ""
+                except Exception:
+                    delta = ""
+                if delta:
+                    buffer += delta
+                    self.logger.debug("LLM delta", extra={"len": len(delta)})
+                    sentences = self._extract_sentences(buffer)
+                    for sentence in sentences[:-1]:
+                        yield sentence
+                    buffer = sentences[-1] if sentences else ""
+            if buffer.strip():
+                yield buffer
         except Exception as e:
             self.logger.exception(f"LLM streaming error: {e}")
             yield "抱歉，导览服务暂时不可用。"
@@ -231,37 +202,21 @@ class NarrativeOrchestrator:
             self.logger.exception(f"Audio processing error: {e}")
     
     async def _generate_audio(self, text: str) -> bytes:
-        """Generate audio from text using TTS service"""
+        """Generate audio from text using OpenAI TTS"""
         try:
-            # Placeholder for TTS API call
-            # In a real implementation, call your TTS service here
-            async with aiohttp.ClientSession() as session:
-                payload = {
-                    "text": text,
-                    "voice": "zh-CN-XiaoxiaoNeural",  # Example voice
-                    "format": "mp3",
-                    "rate": "0%",
-                    "pitch": "0%"
-                }
-                
-                headers = {
-                    "Authorization": f"Bearer {settings.TTS_API_KEY}",
-                    "Content-Type": "application/json"
-                }
-                
-                # Replace with actual TTS endpoint
-                async with session.post(
-                    "https://api.tts-service.com/synthesize",
-                    json=payload,
-                    headers=headers,
-                    timeout=aiohttp.ClientTimeout(total=30)
-                ) as response:
-                    if response.status == 200:
-                        return await response.read()
-                    else:
-                        self.logger.warning("TTS API error", extra={"status": response.status})
-                        return b""
-                        
+            resp = await self.tts_client.audio.speech.create(
+                model="tts-1",
+                voice="alloy",
+                input=text,
+                response_format="mp3",
+            )
+            # The SDK returns a streaming/binary content wrapper
+            try:
+                content = await resp.content.read()  # type: ignore[attr-defined]
+            except Exception:
+                # Fallback for older SDKs that return bytes directly
+                content = getattr(resp, "content", b"")
+            return content or b""
         except Exception as e:
             self.logger.exception(f"TTS generation error: {e}")
             return b""
@@ -303,18 +258,36 @@ class NarrativeOrchestrator:
             self.logger.exception(f"Storage error: {e}")
     
     async def _send_eos_message(self):
-        """Send end of stream message"""
+        """Send end of stream message and persist guide + segments"""
+        transcript = "".join(self.transcript_parts)
         message = EosMessage(
             type="eos",
             guideId=self.guide_id,
             totalDurationMs=self.total_duration_ms,
-            transcript="".join(self.transcript_parts)
+            transcript=transcript
         )
         await self.ws.send_json(message.model_dump())
         self.logger.info("eos sent", extra={
             "guideId": self.guide_id,
             "totalDurationMs": self.total_duration_ms,
         })
+        # Persist to DB
+        try:
+            await self.guide_mapper.create_guide(
+                guide_id=self.guide_id,
+                device_id=self.init_data.deviceId,
+                spot="",
+                title=f"探索{self.init_data.geo.lat:.4f}, {self.init_data.geo.lng:.4f}",
+                transcript=transcript,
+                duration_ms=self.total_duration_ms,
+            )
+            if self.segments:
+                await self.guide_mapper.create_guide_segments_batch(
+                    segments=self.segments,
+                    guide_id=self.guide_id,
+                )
+        except Exception as e:
+            self.logger.exception(f"persist guide failed: {e}")
     
     async def _send_error_message(self, code: str, message: str):
         """Send error message to client"""

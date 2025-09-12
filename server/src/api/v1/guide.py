@@ -11,6 +11,8 @@ from ...services.vision import vision_service
 from ...services.orchestrator import NarrativeOrchestrator
 from ...mappers.guide_mapper import GuideMapper
 from ..deps import get_guide_mapper
+from ...core.supabase import supabase_admin
+from ...core.config import settings
 
 router = APIRouter(prefix="/guide", tags=["guide"])
 logger = logging.getLogger("api.guide")
@@ -197,26 +199,41 @@ async def handle_replay(websocket: WebSocket, replay_message: guide_schemas.Repl
         replay_message: Replay request message
     """
     try:
-        # This is a placeholder implementation
-        # In a real system, you would:
-        # 1. Fetch the guide and its segments from database
-        # 2. Start streaming from the specified position
-        # 3. Send audio segments from storage
-        
+        ws_logger = logging.getLogger("ws.guide.replay")
         guide_id = replay_message.guideId
         from_ms = replay_message.fromMs
-        
-        print(f"Replay requested for guide {guide_id} from {from_ms}ms")
-        
-        # For now, send an error indicating replay is not implemented
-        await websocket.send_json({
-            "type": "error",
-            "code": "REPLAY_NOT_IMPLEMENTED",
-            "message": "Replay functionality is not yet implemented"
-        })
-        
+        mapper = GuideMapper(supabase_admin)
+
+        segments = await mapper.get_guide_segments(guide_id)
+        if not segments:
+            await websocket.send_json({"type": "error", "code": "NOT_FOUND", "message": "Guide not found"})
+            return
+
+        sent_any = False
+        for segment in segments:
+            # Stream segments whose end is after the desired start time
+            if segment.end_ms is None or segment.end_ms > from_ms:
+                try:
+                    resp = supabase_admin.storage.from_(settings.SUPABASE_STORAGE_BUCKET_AUDIO).download(segment.object_key)
+                    audio_bytes = resp
+                    # Minimal header: client should reuse same header format
+                    header = json.dumps({
+                        "seq": segment.seq,
+                        "start_ms": segment.start_ms,
+                        "end_ms": segment.end_ms,
+                        "format": segment.format,
+                        "bytes_len": segment.bytes_len,
+                    }, separators=(",", ":")).encode("utf-8")
+                    length_prefix = len(header).to_bytes(4, byteorder="big")
+                    await websocket.send_bytes(length_prefix + header + audio_bytes)
+                    ws_logger.info(f"Replayed segment {segment.seq} for guide {guide_id}")
+                    sent_any = True
+                except Exception as e:
+                    ws_logger.error(f"Failed to replay segment {segment.seq}: {e}")
+        if not sent_any:
+            await websocket.send_json({"type": "error", "code": "NO_SEGMENTS", "message": "No segments to replay from position"})
     except Exception as e:
-        print(f"Error handling replay: {e}")
+        logging.getLogger("ws.guide.replay").exception(f"Error handling replay: {e}")
         raise
 
 async def handle_nack(websocket: WebSocket, nack_message: guide_schemas.NackMessage):
@@ -228,25 +245,17 @@ async def handle_nack(websocket: WebSocket, nack_message: guide_schemas.NackMess
         nack_message: NACK message
     """
     try:
-        seq = nack_message.seq
-        
-        print(f"NACK received for sequence {seq}")
-        
-        # This is a placeholder implementation
-        # In a real system, you would:
-        # 1. Look up the missing segment in database
-        # 2. Retrieve it from storage
-        # 3. Resend the segment
-        
-        # For now, send an error indicating NACK handling is not implemented
+        # Without guideId context, we cannot reliably fetch the segment.
+        # Expect the client to reconnect with replay for now.
+        ws_logger = logging.getLogger("ws.guide.nack")
+        ws_logger.warning(f"NACK received for seq {nack_message.seq} - advise client to use replay")
         await websocket.send_json({
             "type": "error",
-            "code": "NACK_NOT_IMPLEMENTED",
-            "message": f"NACK handling for sequence {seq} is not yet implemented"
+            "code": "NACK_USE_REPLAY",
+            "message": f"Use replay to recover missing segment {nack_message.seq}"
         })
-        
     except Exception as e:
-        print(f"Error handling NACK: {e}")
+        logging.getLogger("ws.guide.nack").exception(f"Error handling NACK: {e}")
         raise
 
 @router.get("/guides/{device_id}")

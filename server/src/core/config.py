@@ -19,8 +19,7 @@ class Settings(BaseSettings):
     
     # Guide Service Configuration
     SUPABASE_STORAGE_BUCKET_AUDIO: str = "audio-seg"
-    LLM_ENDPOINT: str
-    LLM_API_KEY: str
+    OPENAI_API_KEY: str
     TTS_API_KEY: str
     
     # Application Settings

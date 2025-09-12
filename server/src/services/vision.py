@@ -3,17 +3,15 @@ import base64
 import json
 import asyncio
 from typing import List
-import aiohttp
-from ..schemas.guide import IdentifyRequest, Candidate
+from any_llm import acompletion
 from ..core.config import settings
+from ..schemas.guide import IdentifyRequest, Candidate
 import logging
 
 class VisionService:
     """Service for image identification using Vision LLM"""
     
     def __init__(self):
-        self.llm_endpoint = settings.LLM_ENDPOINT
-        self.api_key = settings.LLM_API_KEY
         self.logger = logging.getLogger("service.vision")
     
     async def identify_location(self, request: IdentifyRequest) -> List[Candidate]:
@@ -99,57 +97,31 @@ class VisionService:
         return s
 
     async def _call_vision_api(self, image_base64: str, prompt: str) -> List[Candidate]:
-        """
-        Call external vision API
-        
-        Args:
-            image_base64: Base64 encoded image
-            prompt: Analysis prompt
-            
-        Returns:
-            List of candidates
-        """
+        """Call external vision API using any_llm (OpenAI provider)."""
         try:
-            self.logger.debug("calling vision API")
-            async with aiohttp.ClientSession() as session:
-                payload = {
-                    "model": "vision-model",  # Replace with actual model name
-                    "messages": [
-                        {
-                            "role": "user",
-                            "content": [
-                                {"type": "text", "text": prompt},
-                                {
-                                    "type": "image_url",
-                                    "image_url": {
-                                        "url": f"data:image/jpeg;base64,{image_base64}"
-                                    }
-                                }
-                            ]
-                        }
-                    ],
-                    "max_tokens": 1000,
-                    "temperature": 0.7
-                }
-                
-                headers = {
-                    "Authorization": f"Bearer {self.api_key}",
-                    "Content-Type": "application/json"
-                }
-                
-                async with session.post(
-                    self.llm_endpoint,
-                    json=payload,
-                    headers=headers,
-                    timeout=aiohttp.ClientTimeout(total=30)
-                ) as response:
-                    if response.status == 200:
-                        result = await response.json()
-                        return self._parse_vision_response(result)
-                    else:
-                        self.logger.warning("vision API non-200", extra={"status": response.status})
-                        return self._get_fallback_candidates()
-                        
+            self.logger.debug("calling vision API with any_llm")
+            response = await acompletion(
+                provider="openai",
+                model="gpt-4.1",
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": prompt},
+                            {
+                                "type": "image_url",
+                                "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"},
+                            },
+                        ],
+                    }
+                ],
+                max_tokens=1000,
+                temperature=0.7,
+                response_format={"type": "json_object"},
+                api_config={"api_key": settings.OPENAI_API_KEY},
+            )
+            content = response.choices[0].message.content
+            return self._parse_vision_response({"content": content})
         except asyncio.TimeoutError:
             self.logger.warning("vision API timeout")
             return self._get_fallback_candidates()
@@ -169,7 +141,7 @@ class VisionService:
         """
         try:
             # Extract content from response
-            content = response.get("choices", [{}])[0].get("message", {}).get("content", "")
+            content = response.get("content", "")
             
             # Try to parse as JSON
             if content.strip().startswith("{"):
@@ -204,7 +176,7 @@ class VisionService:
         """Return fallback candidates when vision fails"""
         return [
             Candidate(
-                spot="未知地点",
+                spot="识别失败未知",
                 confidence=0.1,
                 bbox=None
             )
