@@ -12,6 +12,24 @@ const WS_CONFIG = {
   AUDIO_PRELOAD_THRESHOLD: 200, // 剩余200ms时预加载下一段
 };
 
+const WS_DEBUG = (process.env.EXPO_PUBLIC_WS_DEBUG || 'true') === 'true';
+function wsLog(...args: any[]) {
+  if (WS_DEBUG) {
+    // eslint-disable-next-line no-console
+    console.log('[WS]', ...args);
+  }
+}
+function toErrorString(error: any): string {
+  try {
+    if (!error) return 'unknown';
+    if (typeof error === 'string') return error;
+    if (error.message) return error.message as string;
+    return JSON.stringify(error);
+  } catch {
+    try { return String(error); } catch { return 'unknown'; }
+  }
+}
+
 function buildWsUrl(): string {
   const explicit = process.env.EXPO_PUBLIC_WS_URL;
   if (explicit) return explicit;
@@ -20,7 +38,9 @@ function buildWsUrl(): string {
   const wsBase = apiBase.replace(/^http:/i, 'ws:').replace(/^https:/i, 'wss:');
   // remove trailing slash
   const trimmed = wsBase.endsWith('/') ? wsBase.slice(0, -1) : wsBase;
-  return `${trimmed}/guide/stream`;
+  const url = `${trimmed}/guide/stream`;
+  wsLog('buildWsUrl ->', url);
+  return url;
 }
 
 /**
@@ -50,6 +70,7 @@ export class GuideStreamConnection {
   private pingTimer: ReturnType<typeof setInterval> | null = null;
   private playerState: StreamPlayerState;
   private initOrReplayPayload: { kind: 'init'; payload: Omit<WSInitMessage, 'type' | 'deviceId'> } | { kind: 'replay'; payload: Omit<WSReplayMessage, 'type' | 'deviceId'> } | null = null;
+  private wsUrl: string | null = null;
   
   // 事件回调
   private onConnectionStateChange?: (state: ConnectionState) => void;
@@ -92,6 +113,8 @@ export class GuideStreamConnection {
     if (this.connectionState === 'connected') return;
     this.setConnectionState('connecting');
     const url = buildWsUrl();
+    this.wsUrl = url;
+    wsLog('connect -> opening', url);
     try {
       this.ws = new WebSocket(url);
       // @ts-ignore RN may not support binaryType; safe to attempt
@@ -99,7 +122,9 @@ export class GuideStreamConnection {
       this.setupWebSocketHandlers();
     } catch (error) {
       this.setConnectionState('error');
-      this.onError?.(`Failed to open WebSocket: ${String(error)}`);
+      const errStr = toErrorString(error);
+      wsLog('connect -> error', errStr);
+      this.onError?.(`Failed to open WebSocket: ${errStr}`);
     }
   }
 
@@ -110,6 +135,7 @@ export class GuideStreamConnection {
     if (!this.ws) return;
 
     this.ws.onopen = () => {
+      wsLog('onopen', this.wsUrl);
       this.setConnectionState('connected');
       this.reconnectAttempts = 0;
       this.startPing();
@@ -117,10 +143,18 @@ export class GuideStreamConnection {
 
     this.ws.onmessage = (event: any) => {
       const data = event && Object.prototype.hasOwnProperty.call(event, 'data') ? event.data : event;
+      if (typeof data === 'string') {
+        wsLog('onmessage text len=', data.length);
+      } else if (data && typeof (data as any).byteLength === 'number') {
+        wsLog('onmessage binary bytes=', (data as ArrayBuffer).byteLength);
+      } else {
+        wsLog('onmessage unknown type');
+      }
       this.handleMessage(data);
     };
 
     this.ws.onclose = (event) => {
+      wsLog('onclose', { code: (event as any).code, reason: (event as any).reason, wasClean: (event as any).wasClean });
       this.setConnectionState('disconnected');
       this.stopPing();
       
@@ -131,7 +165,9 @@ export class GuideStreamConnection {
 
     this.ws.onerror = (error) => {
       this.setConnectionState('error');
-      this.onError?.(`WebSocket error: ${error}`);
+      const errStr = toErrorString(error);
+      wsLog('onerror', errStr, 'readyState=', this.ws?.readyState, 'url=', this.wsUrl);
+      this.onError?.(`WebSocket error: ${errStr}`);
     };
   }
 
@@ -152,38 +188,55 @@ export class GuideStreamConnection {
         const headerLen = view.getUint32(0);
         const headerBytes = new Uint8Array(buffer, 4, headerLen);
         const headerStr = new TextDecoder('utf-8').decode(headerBytes);
-        const header = JSON.parse(headerStr);
+        let header: any = null;
+        try {
+          header = JSON.parse(headerStr);
+        } catch (e) {
+          wsLog('binary header parse error', toErrorString(e));
+          return;
+        }
         const audioBytes = new Uint8Array(buffer, 4 + headerLen);
         await this.handleBinaryAudio(header, audioBytes);
         return;
       }
 
       // Text frame
-      const message: WSResponse | any = JSON.parse(data);
+      let message: WSResponse | any = null;
+      try {
+        message = JSON.parse(data);
+      } catch (e) {
+        wsLog('text parse error', toErrorString(e), 'data prefix=', data.slice(0, 120));
+        throw e;
+      }
       if (!message || typeof message !== 'object') return;
       switch (message.type) {
         case 'meta':
+          wsLog('recv meta', { guideId: message.guideId, title: message.title });
           this.onMetaReceived?.(message);
           break;
         case 'text':
+          wsLog('recv text', { len: typeof message.delta === 'string' ? message.delta.length : 0 });
           if (message.delta !== undefined) this.onTextReceived?.(message.delta);
           break;
         case 'audio':
+          wsLog('recv audio (json)', { seq: message.seq });
           // Fallback: audio provided as base64 JSON
           await this.handleJsonAudio(message);
           break;
         case 'eos':
+          wsLog('recv eos', { guideId: message.guideId });
           if (message.guideId) this.onComplete?.(message.guideId);
           break;
         case 'err':
         case 'error':
+          wsLog('recv error', message);
           this.onError?.(message.msg || message.message || 'Server error');
           break;
         default:
           console.warn('Unknown message type:', message);
       }
     } catch (error) {
-      console.error('Failed to parse message:', error);
+      wsLog('handleMessage exception', toErrorString(error));
       this.onError?.('Failed to parse server message');
     }
   }
@@ -224,6 +277,7 @@ export class GuideStreamConnection {
     await FileSystem.writeAsStringAsync(filePath, base64, { encoding: FileSystem.EncodingType.Base64 });
     this.playerState.queue.push(filePath);
     this.playerState.expectedSeq = seq + 1;
+    wsLog('audio enqueued', { seq, queueLen: this.playerState.queue.length });
     if (!this.playerState.playing) this.startPlayback();
   }
 
@@ -338,9 +392,12 @@ export class GuideStreamConnection {
   private send(message: WSMessage) {
     if (this.ws && this.connectionState === 'connected') {
       try {
+        wsLog('send', (message as any).type);
         this.ws.send(JSON.stringify(message));
       } catch (error) {
-        this.onError?.(`Failed to send WS message: ${String(error)}`);
+        const errStr = toErrorString(error);
+        wsLog('send error', errStr);
+        this.onError?.(`Failed to send WS message: ${errStr}`);
       }
     }
   }
@@ -403,7 +460,7 @@ export class GuideStreamConnection {
   }
 
   /**
-   * 断开连接并清理资源 (模拟)
+   * 断开连接并清理资源
    */
   async disconnect() {
     this.playerState.isDestroyed = true;
@@ -415,10 +472,10 @@ export class GuideStreamConnection {
     }
     
     this.stopPing();
-    
-    // 模拟关闭WebSocket
-    console.log('Mock WebSocket disconnected');
-    
+    // 关闭WebSocket连接（如果存在）
+    try { this.ws?.close(); } catch {}
+    this.ws = null;
+
     // 停止音频播放
     if (this.playerState.currentSound) {
       await this.playerState.currentSound.unloadAsync();
@@ -466,13 +523,14 @@ export function openGuideStream(
         if (payload?.type === 'replay') {
           void conn.sendReplay({ guideId: payload.guideId, fromMs: payload.fromMs ?? 0 });
         } else if (payload?.type === 'init') {
-          void conn.sendInit({
+          const initPayload: any = {
             imageBase64: payload.imageBase64,
-            imageUrl: payload.imageUrl,
             identifyId: payload.identifyId,
             geo: payload.geo,
             prefs: payload.prefs,
-          });
+          };
+          if (payload.imageUrl) initPayload.imageUrl = payload.imageUrl;
+          void conn.sendInit(initPayload);
         }
       }
     },

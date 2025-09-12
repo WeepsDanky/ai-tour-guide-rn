@@ -72,6 +72,7 @@ export interface WSInitMessage {
   type: 'init';
   deviceId: string;
   imageBase64: string;
+  imageUrl?: string;
   identifyId?: string;
   geo?: GeoLocation;
   prefs: CapturePrefs;
