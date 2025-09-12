@@ -1,8 +1,24 @@
 # src/main.py
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from .api.v1 import users, auth, devices, guide
+import logging
+from .core.logging import setup_logging
 
+setup_logging()
 app = FastAPI(title="AI Tour Guide Backend")
+
+# Basic request logging middleware
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    logger = logging.getLogger("http")
+    logger.info(f"HTTP {request.method} {request.url.path}")
+    try:
+        response = await call_next(request)
+        logger.info(f"HTTP {request.method} {request.url.path} -> {response.status_code}")
+        return response
+    except Exception as e:
+        logger.exception(f"Unhandled error for {request.method} {request.url.path}: {e}")
+        raise
 
 # Include routers
 # Auth endpoints available at both /auth and /api/v1/auth for backward compatibility

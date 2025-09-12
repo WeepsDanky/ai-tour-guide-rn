@@ -5,6 +5,7 @@ from typing import Optional, List, Dict, Any, TYPE_CHECKING
 from postgrest import APIResponse
 from ..models.guide_models import IdentifySession, Guide, GuideSegment
 from ..schemas.guide import AudioSegmentInfo
+import logging
 
 if TYPE_CHECKING:
     from supabase import Client
@@ -14,6 +15,7 @@ class GuideMapper:
     
     def __init__(self, db: "Client"):
         self.db = db
+        self.logger = logging.getLogger("mapper.guide")
     
     async def create_identify_session(
         self,
@@ -70,6 +72,7 @@ class GuideMapper:
             )
             
             if response.data:
+                self.logger.info("identify session created", extra={"identifyId": identify_id})
                 return IdentifySession(**response.data[0])
             return None
             
@@ -155,6 +158,7 @@ class GuideMapper:
             )
             
             if response.data:
+                self.logger.info("guide created", extra={"guideId": guide_id})
                 return Guide(**response.data[0])
             return None
             
@@ -202,7 +206,10 @@ class GuideMapper:
                 .execute()
             )
             
-            return True
+            ok = True
+            if ok:
+                self.logger.info("guide updated", extra={"guideId": guide_id, **({} if not duration_ms else {"durationMs": duration_ms})})
+            return ok
             
         except Exception as e:
             print(f"Error updating guide: {e}")
@@ -262,6 +269,7 @@ class GuideMapper:
             )
             
             if response.data:
+                self.logger.debug("guide segment created", extra={"guideId": guide_id, "seq": seq})
                 return GuideSegment(**response.data[0])
             return None
             
@@ -305,7 +313,10 @@ class GuideMapper:
                 .execute()
             )
             
-            return True
+            ok = True
+            if ok:
+                self.logger.info("guide segments batch created", extra={"guideId": guide_id, "count": len(segments_data)})
+            return ok
             
         except Exception as e:
             print(f"Error creating guide segments batch: {e}")
@@ -400,8 +411,9 @@ class GuideMapper:
                 
                 if not segments_response.data:
                     # Note: In a real transaction, we would rollback the guide creation
-                    print("Warning: Guide created but segments failed")
+                    self.logger.warning("guide created but segments failed", extra={"guideId": guide_data.get("guide_id")})
             
+            self.logger.info("guide and segments created", extra={"guideId": guide_data.get("guide_id"), "segments": len(segments_data)})
             return True
             
         except Exception as e:

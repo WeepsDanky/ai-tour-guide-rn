@@ -4,6 +4,7 @@ import json
 from typing import Dict, Any
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPException
 from fastapi.responses import JSONResponse
+import logging
 
 from ...schemas import guide as guide_schemas
 from ...services.vision import vision_service
@@ -12,6 +13,7 @@ from ...mappers.guide_mapper import GuideMapper
 from ..deps import get_guide_mapper
 
 router = APIRouter(prefix="/guide", tags=["guide"])
+logger = logging.getLogger("api.guide")
 
 @router.post("/identify", response_model=guide_schemas.IdentifyResponse)
 async def identify(
@@ -25,11 +27,21 @@ async def identify(
     to identify possible locations or landmarks.
     """
     try:
+        logger.info("POST /guide/identify start", extra={
+            "deviceId": request.deviceId,
+            "lat": request.geo.lat,
+            "lng": request.geo.lng,
+            "accuracyM": request.geo.accuracyM,
+        })
         # Generate unique identify session ID
         identify_id = f"id_{uuid.uuid4().hex[:12]}"
         
         # Call vision service to identify location
         candidates = await vision_service.identify_location(request)
+        logger.info("Vision candidates returned", extra={
+            "identifyId": identify_id,
+            "numCandidates": len(candidates) if candidates else 0,
+        })
         
         # Store the identify session in database
         best_candidate = candidates[0] if candidates else None
@@ -44,13 +56,19 @@ async def identify(
             bbox=best_candidate.bbox if best_candidate else None
         )
         
-        return guide_schemas.IdentifyResponse(
+        response = guide_schemas.IdentifyResponse(
             identifyId=identify_id,
             candidates=candidates
         )
+        logger.info("POST /guide/identify success", extra={
+            "identifyId": identify_id,
+            "bestSpot": best_candidate.spot if best_candidate else None,
+            "confidence": best_candidate.confidence if best_candidate else None,
+        })
+        return response
         
     except Exception as e:
-        print(f"Error in identify endpoint: {e}")
+        logger.exception(f"POST /guide/identify failed: {e}")
         raise HTTPException(
             status_code=500,
             detail="Failed to identify location"
@@ -65,6 +83,9 @@ async def guide_stream(websocket: WebSocket):
     including text and audio segments.
     """
     await websocket.accept()
+    conn_id = uuid.uuid4().hex[:8]
+    ws_logger = logging.getLogger("ws.guide")
+    ws_logger.info(f"WS[{conn_id}] connected")
     
     try:
         orchestrator = None
@@ -74,7 +95,7 @@ async def guide_stream(websocket: WebSocket):
             try:
                 message_data = await websocket.receive_json()
             except Exception as e:
-                print(f"Error receiving WebSocket message: {e}")
+                ws_logger.exception(f"WS[{conn_id}] receive error: {e}")
                 break
             
             message_type = message_data.get("type")
@@ -83,13 +104,18 @@ async def guide_stream(websocket: WebSocket):
                 try:
                     # Parse and validate init message
                     init_message = guide_schemas.InitMessage(**message_data)
-                    
+                    ws_logger.info(f"WS[{conn_id}] init received", extra={
+                        "deviceId": init_message.deviceId,
+                        "lat": init_message.geo.lat,
+                        "lng": init_message.geo.lng,
+                        "hasIdentifyId": bool(init_message.identifyId),
+                    })
                     # Create orchestrator and start streaming
                     orchestrator = NarrativeOrchestrator(websocket, init_message)
                     await orchestrator.stream()
                     
                 except Exception as e:
-                    print(f"Error in init message handling: {e}")
+                    ws_logger.exception(f"WS[{conn_id}] init handling error: {e}")
                     await websocket.send_json({
                         "type": "error",
                         "code": "INIT_ERROR",
@@ -99,9 +125,13 @@ async def guide_stream(websocket: WebSocket):
             elif message_type == "replay":
                 try:
                     replay_message = guide_schemas.ReplayMessage(**message_data)
+                    ws_logger.info(f"WS[{conn_id}] replay request", extra={
+                        "guideId": replay_message.guideId,
+                        "fromMs": replay_message.fromMs,
+                    })
                     await handle_replay(websocket, replay_message)
                 except Exception as e:
-                    print(f"Error in replay message handling: {e}")
+                    ws_logger.exception(f"WS[{conn_id}] replay handling error: {e}")
                     await websocket.send_json({
                         "type": "error",
                         "code": "REPLAY_ERROR",
@@ -111,9 +141,12 @@ async def guide_stream(websocket: WebSocket):
             elif message_type == "nack":
                 try:
                     nack_message = guide_schemas.NackMessage(**message_data)
+                    ws_logger.info(f"WS[{conn_id}] nack request", extra={
+                        "seq": nack_message.seq,
+                    })
                     await handle_nack(websocket, nack_message)
                 except Exception as e:
-                    print(f"Error in nack message handling: {e}")
+                    ws_logger.exception(f"WS[{conn_id}] nack handling error: {e}")
                     await websocket.send_json({
                         "type": "error",
                         "code": "NACK_ERROR",
@@ -123,13 +156,14 @@ async def guide_stream(websocket: WebSocket):
             elif message_type == "close":
                 try:
                     close_message = guide_schemas.CloseMessage(**message_data)
-                    print(f"Client requested close")
+                    ws_logger.info(f"WS[{conn_id}] client requested close")
                     break
                 except Exception as e:
-                    print(f"Error in close message handling: {e}")
+                    ws_logger.exception(f"WS[{conn_id}] close handling error: {e}")
                     break
                     
             else:
+                ws_logger.warning(f"WS[{conn_id}] unknown message type: {message_type}")
                 await websocket.send_json({
                     "type": "error",
                     "code": "UNKNOWN_MESSAGE_TYPE",
@@ -137,9 +171,9 @@ async def guide_stream(websocket: WebSocket):
                 })
                 
     except WebSocketDisconnect:
-        print("WebSocket client disconnected")
+        ws_logger.info(f"WS[{conn_id}] disconnected")
     except Exception as e:
-        print(f"Unexpected WebSocket error: {e}")
+        ws_logger.exception(f"WS[{conn_id}] unexpected error: {e}")
         try:
             await websocket.send_json({
                 "type": "error",

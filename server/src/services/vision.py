@@ -6,6 +6,7 @@ from typing import List
 import aiohttp
 from ..schemas.guide import IdentifyRequest, Candidate
 from ..core.config import settings
+import logging
 
 class VisionService:
     """Service for image identification using Vision LLM"""
@@ -13,6 +14,7 @@ class VisionService:
     def __init__(self):
         self.llm_endpoint = settings.LLM_ENDPOINT
         self.api_key = settings.LLM_API_KEY
+        self.logger = logging.getLogger("service.vision")
     
     async def identify_location(self, request: IdentifyRequest) -> List[Candidate]:
         """
@@ -25,6 +27,11 @@ class VisionService:
             List of location candidates with confidence scores
         """
         try:
+            self.logger.info("vision identify start", extra={
+                "deviceId": request.deviceId,
+                "lat": request.geo.lat,
+                "lng": request.geo.lng,
+            })
             # Decode base64 image to validate format
             image_data = base64.b64decode(request.imageBase64)
             
@@ -33,11 +40,14 @@ class VisionService:
             
             # Call external Vision LLM API
             candidates = await self._call_vision_api(request.imageBase64, prompt)
+            self.logger.info("vision identify success", extra={
+                "numCandidates": len(candidates) if candidates else 0,
+            })
             
             return candidates
             
         except Exception as e:
-            print(f"Error in vision service: {e}")
+            self.logger.exception(f"vision identify error: {e}")
             # Return fallback candidate if vision fails
             return [
                 Candidate(
@@ -84,6 +94,7 @@ class VisionService:
             List of candidates
         """
         try:
+            self.logger.debug("calling vision API")
             async with aiohttp.ClientSession() as session:
                 payload = {
                     "model": "vision-model",  # Replace with actual model name
@@ -120,14 +131,14 @@ class VisionService:
                         result = await response.json()
                         return self._parse_vision_response(result)
                     else:
-                        print(f"Vision API error: {response.status}")
+                        self.logger.warning("vision API non-200", extra={"status": response.status})
                         return self._get_fallback_candidates()
                         
         except asyncio.TimeoutError:
-            print("Vision API timeout")
+            self.logger.warning("vision API timeout")
             return self._get_fallback_candidates()
         except Exception as e:
-            print(f"Vision API call error: {e}")
+            self.logger.exception(f"vision API call error: {e}")
             return self._get_fallback_candidates()
     
     def _parse_vision_response(self, response: dict) -> List[Candidate]:
@@ -170,7 +181,7 @@ class VisionService:
                 ]
                 
         except (json.JSONDecodeError, KeyError, ValueError) as e:
-            print(f"Error parsing vision response: {e}")
+            self.logger.exception(f"error parsing vision response: {e}")
             return self._get_fallback_candidates()
     
     def _get_fallback_candidates(self) -> List[Candidate]:

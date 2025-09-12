@@ -12,6 +12,7 @@ from ..schemas.guide import (
     AudioSegmentInfo
 )
 from ..core.config import settings
+import logging
 
 class NarrativeOrchestrator:
     """Orchestrates the complete guide streaming process"""
@@ -24,10 +25,17 @@ class NarrativeOrchestrator:
         self.segments: List[AudioSegmentInfo] = []
         self.transcript_parts: List[str] = []
         self.total_duration_ms = 0
+        self.logger = logging.getLogger("service.orchestrator")
     
     async def stream(self):
         """Main streaming orchestration method"""
         try:
+            self.logger.info("orchestrator start", extra={
+                "guideId": self.guide_id,
+                "deviceId": self.init_data.deviceId,
+                "lat": self.init_data.geo.lat,
+                "lng": self.init_data.geo.lng,
+            })
             # 1. Send early meta message
             await self._send_meta_message()
             
@@ -45,8 +53,14 @@ class NarrativeOrchestrator:
             
             # 5. Send end of stream message
             await self._send_eos_message()
+            self.logger.info("orchestrator completed", extra={
+                "guideId": self.guide_id,
+                "segments": len(self.segments),
+                "durationMs": self.total_duration_ms,
+            })
             
         except Exception as e:
+            self.logger.exception(f"orchestrator error: {e}")
             await self._send_error_message("STREAM_ERROR", str(e))
     
     async def _send_meta_message(self):
@@ -60,6 +74,7 @@ class NarrativeOrchestrator:
             estimatedDurationMs=120000  # 2 minutes estimate
         )
         await self.ws.send_json(meta.model_dump())
+        self.logger.info("meta sent", extra={"guideId": self.guide_id, "title": meta.title})
     
     async def _get_location_context(self) -> str:
         """Perform RAG to get relevant context for the location"""
@@ -83,6 +98,7 @@ class NarrativeOrchestrator:
     async def _stream_and_chunk_llm(self, context: str) -> AsyncGenerator[str, None]:
         """Stream from LLM and chunk into sentences"""
         try:
+            self.logger.info("LLM stream begin", extra={"guideId": self.guide_id})
             async with aiohttp.ClientSession() as session:
                 payload = {
                     "model": "gpt-4",  # Replace with actual model
@@ -112,6 +128,7 @@ class NarrativeOrchestrator:
                     headers=headers
                 ) as response:
                     if response.status != 200:
+                        self.logger.warning("LLM non-200", extra={"status": response.status})
                         yield "抱歉，无法获取导览信息。"
                         return
                     
@@ -129,6 +146,7 @@ class NarrativeOrchestrator:
                                     delta = data.get('choices', [{}])[0].get('delta', {}).get('content', '')
                                     if delta:
                                         buffer += delta
+                                        self.logger.debug("LLM delta", extra={"len": len(delta)})
                                         
                                         # Check for sentence endings
                                         sentences = self._extract_sentences(buffer)
@@ -144,7 +162,7 @@ class NarrativeOrchestrator:
                         yield buffer
                         
         except Exception as e:
-            print(f"LLM streaming error: {e}")
+            self.logger.exception(f"LLM streaming error: {e}")
             yield "抱歉，导览服务暂时不可用。"
     
     def _extract_sentences(self, text: str) -> List[str]:
@@ -172,6 +190,7 @@ class NarrativeOrchestrator:
         """Send text delta to client"""
         message = TextMessage(type="text", delta=text)
         await self.ws.send_json(message.model_dump())
+        self.logger.debug("text delta sent", extra={"len": len(text)})
         self.transcript_parts.append(text)
     
     async def _process_audio_segment(self, text: str):
@@ -195,6 +214,10 @@ class NarrativeOrchestrator:
                 # Send binary audio data
                 header = self._create_binary_header(segment_info)
                 await self.ws.send_bytes(header + audio_bytes)
+                self.logger.info("audio segment sent", extra={
+                    "seq": segment_info.seq,
+                    "bytes": segment_info.bytes_len,
+                })
                 
                 # Update tracking
                 self.segments.append(segment_info)
@@ -205,7 +228,7 @@ class NarrativeOrchestrator:
                 asyncio.create_task(self._store_audio_segment(segment_info, audio_bytes))
                 
         except Exception as e:
-            print(f"Audio processing error: {e}")
+            self.logger.exception(f"Audio processing error: {e}")
     
     async def _generate_audio(self, text: str) -> bytes:
         """Generate audio from text using TTS service"""
@@ -236,11 +259,11 @@ class NarrativeOrchestrator:
                     if response.status == 200:
                         return await response.read()
                     else:
-                        print(f"TTS API error: {response.status}")
+                        self.logger.warning("TTS API error", extra={"status": response.status})
                         return b""
                         
         except Exception as e:
-            print(f"TTS generation error: {e}")
+            self.logger.exception(f"TTS generation error: {e}")
             return b""
     
     def _create_binary_header(self, segment_info: AudioSegmentInfo) -> bytes:
@@ -274,10 +297,10 @@ class NarrativeOrchestrator:
             )
             
             if result.get("error"):
-                print(f"Storage upload error: {result['error']}")
+                self.logger.warning("storage upload error", extra={"error": result["error"]})
                 
         except Exception as e:
-            print(f"Storage error: {e}")
+            self.logger.exception(f"Storage error: {e}")
     
     async def _send_eos_message(self):
         """Send end of stream message"""
@@ -288,6 +311,10 @@ class NarrativeOrchestrator:
             transcript="".join(self.transcript_parts)
         )
         await self.ws.send_json(message.model_dump())
+        self.logger.info("eos sent", extra={
+            "guideId": self.guide_id,
+            "totalDurationMs": self.total_duration_ms,
+        })
     
     async def _send_error_message(self, code: str, message: str):
         """Send error message to client"""
@@ -297,3 +324,4 @@ class NarrativeOrchestrator:
             message=message
         )
         await self.ws.send_json(error.model_dump())
+        self.logger.error("error message sent", extra={"code": code, "message": message})
