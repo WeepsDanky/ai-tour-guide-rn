@@ -1,5 +1,5 @@
 # src/schemas/guide.py
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from typing import List, Literal, Union, Optional, Dict, Any
 
 # 1.1 REST API: /v1/identify
@@ -11,9 +11,16 @@ class Geo(BaseModel):
 
 class IdentifyRequest(BaseModel):
     """Request payload for image identification"""
-    imageBase64: str = Field(..., description="Base64 encoded image")
+    imageBase64: Optional[str] = Field(None, description="Base64 string or data URL (data:image/*;base64,...) ")
+    imageUrl: Optional[str] = Field(None, description="Direct https URL to the image")
     geo: Geo = Field(..., description="Geographic location")
     deviceId: str = Field(..., description="Device identifier")
+
+    @model_validator(mode="after")
+    def _validate_image_source(self) -> "IdentifyRequest":
+        if not self.imageBase64 and not self.imageUrl:
+            raise ValueError("Either imageBase64 or imageUrl must be provided")
+        return self
 
 class Candidate(BaseModel):
     """Identified location candidate"""

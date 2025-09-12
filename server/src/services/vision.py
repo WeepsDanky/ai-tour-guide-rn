@@ -2,7 +2,7 @@
 import base64
 import json
 import asyncio
-from typing import List
+from typing import List, Optional
 from any_llm import acompletion
 from ..core.config import settings
 from ..schemas.guide import IdentifyRequest, Candidate
@@ -32,18 +32,29 @@ class VisionService:
                 "lat": request.geo.lat,
                 "lng": request.geo.lng,
             })
-            # Normalize and validate base64 (support data URLs and missing padding)
-            normalized_b64 = self._normalize_base64(request.imageBase64)
-            try:
-                _ = base64.b64decode(normalized_b64)
-            except Exception as dec_err:
-                self.logger.warning("base64 decode warning; proceeding with normalized string", extra={"error": str(dec_err)})
+            image_input: Optional[str] = None
+            input_is_url: bool = False
+            
+            if request.imageBase64:
+                # Normalize and validate base64 (support data URLs and missing padding)
+                normalized_b64 = self._normalize_base64(request.imageBase64)
+                try:
+                    _ = base64.b64decode(normalized_b64)
+                except Exception as dec_err:
+                    self.logger.warning("base64 decode warning; proceeding with normalized string", extra={"error": str(dec_err)})
+                image_input = normalized_b64
+                input_is_url = False
+            elif request.imageUrl:
+                image_input = request.imageUrl.strip()
+                input_is_url = True
+            else:
+                raise self.VisionAPIError("Either imageBase64 or imageUrl must be provided")
             
             # Prepare the prompt for vision LLM
             prompt = self._create_vision_prompt(request.geo.lat, request.geo.lng)
             
             # Call external Vision LLM API
-            candidates = await self._call_vision_api(normalized_b64, prompt)
+            candidates = await self._call_vision_api(image_input, prompt, input_is_url)
             self.logger.info("vision identify success", extra={
                 "numCandidates": len(candidates) if candidates else 0,
             })
@@ -98,8 +109,11 @@ class VisionService:
             s += "=" * missing
         return s
 
-    async def _call_vision_api(self, image_base64: str, prompt: str) -> List[Candidate]:
-        """Call external vision API using any_llm (OpenAI provider)."""
+    async def _call_vision_api(self, image_input: str, prompt: str, input_is_url: bool) -> List[Candidate]:
+        """Call external vision API using any_llm (OpenAI provider).
+
+        image_input: base64 (no data: prefix) or https URL when input_is_url=True
+        """
         try:
             self.logger.debug("calling vision API with any_llm")
             response = await acompletion(
@@ -112,7 +126,9 @@ class VisionService:
                             {"type": "text", "text": prompt},
                             {
                                 "type": "image_url",
-                                "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"},
+                                "image_url": {
+                                    "url": image_input if input_is_url else f"data:image/jpeg;base64,{image_input}"
+                                },
                             },
                         ],
                     }
