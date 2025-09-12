@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, SafeAreaView, StatusBar, Alert, BackHandler } from 'react-native';
+import { View, SafeAreaView, StatusBar, Alert, BackHandler, ScrollView } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { tokens } from '../lib/tokens';
@@ -239,10 +239,10 @@ export default function LectureScreen() {
     <SafeAreaView style={lectureStyles.container}>
       <StatusBar barStyle="light-content" backgroundColor={tokens.colors.background} />
       <HeaderBar onBack={handleBackPress} confidence={currentMeta?.confidence} />
-      {params.imageUri && (
-        <Cover imageUri={params.imageUri} title={currentMeta?.title || '未知标题'} />
-      )}
-      <View style={lectureStyles.contentContainer}>
+      <ScrollView style={lectureStyles.contentContainer} contentContainerStyle={{ paddingBottom: tokens.spacing.xxl }}>
+        {params.imageUri && (
+          <Cover imageUri={params.imageUri} title={currentMeta?.title || '未知标题'} />
+        )}
         <AudioPlayer
           playerState={playbackState}
           transcript={transcript}
@@ -261,7 +261,7 @@ export default function LectureScreen() {
           isLoading={false}
           isFavorited={false}
         />
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
