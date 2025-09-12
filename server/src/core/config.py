@@ -17,6 +17,12 @@ class Settings(BaseSettings):
     # Push Notifications
     EXPO_ACCESS_TOKEN: Optional[str] = None
     
+    # Guide Service Configuration
+    SUPABASE_STORAGE_BUCKET_AUDIO: str = "audio-seg"
+    LLM_ENDPOINT: str
+    LLM_API_KEY: str
+    TTS_API_KEY: str
+    
     # Application Settings
     DEBUG: bool = True
     ENVIRONMENT: str = "development"

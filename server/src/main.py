@@ -1,6 +1,6 @@
 # src/main.py
 from fastapi import FastAPI
-from .api.v1 import users, auth, devices
+from .api.v1 import users, auth, devices, guide
 
 app = FastAPI(title="AI Tour Guide Backend")
 
@@ -10,6 +10,9 @@ app.include_router(auth.router, prefix="/auth", tags=["authentication"])
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["authentication"])
 app.include_router(users.router, prefix="/api/v1", tags=["users"]) # exposes /me
 app.include_router(devices.router, prefix="/api/v1/devices", tags=["devices"])
+
+# Guide endpoints for the "拍照即听" feature
+app.include_router(guide.router, prefix="/api/v1", tags=["guide"])
 
 @app.get("/")
 def read_root():

@@ -7,6 +7,7 @@ from supabase import Client
 from ..core.supabase import supabase_admin, supabase_anon
 from ..mappers.user_mapper import UserMapper
 from ..mappers.device_mapper import DeviceMapper
+from ..mappers.guide_mapper import GuideMapper
 from ..controllers.user_controller import UserController
 from ..controllers.auth_controller import AuthController
 from .cookies import COOKIE_NAME, set_refresh_cookie
@@ -26,6 +27,9 @@ def get_user_mapper(db: Client = Depends(get_db_admin)) -> UserMapper:
 
 def get_device_mapper(db: Client = Depends(get_db_admin)) -> DeviceMapper:
     return DeviceMapper(db)
+
+def get_guide_mapper(db: Client = Depends(get_db_admin)) -> GuideMapper:
+    return GuideMapper(db)
 
 def get_user_controller(mapper: UserMapper = Depends(get_user_mapper)) -> UserController:
     return UserController(mapper)
