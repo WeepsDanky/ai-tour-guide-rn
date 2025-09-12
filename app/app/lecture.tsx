@@ -20,12 +20,11 @@ import { ErrorView } from '../components/lecture/ErrorView';
 
 export default function LectureScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{
-    imageUri?: string;
-    identifyId?: string;
-    guideId?: string;
-    isReplay?: string;
-  }>();
+  const params = useLocalSearchParams<{ imageUri?: string; identifyId?: string; guideId?: string; isReplay?: string }>();
+  const imageUri = (params.imageUri as string) || undefined;
+  const identifyId = (params.identifyId as string) || undefined;
+  const guideIdParam = (params.guideId as string) || undefined;
+  const isReplay = (params.isReplay as string) || undefined;
   
   const {
     currentMeta,
@@ -63,21 +62,21 @@ export default function LectureScreen() {
         // 构建流式请求参数
         let streamPayload;
         
-        if (params.isReplay === 'true' && params.guideId) {
+        if (isReplay === 'true' && guideIdParam) {
           // 重播模式
           streamPayload = {
             type: 'replay' as const,
-            guideId: params.guideId,
+            guideId: guideIdParam,
             fromMs: 0,
             deviceId,
           };
-        } else if (params.imageUri) { // identifyId may not be available
+        } else if (imageUri) { // identifyId may not be available
           // 新讲解模式
           streamPayload = {
             type: 'init' as const,
             deviceId,
-            imageBase64: params.imageUri, // 这里应该是base64编码的图片
-            identifyId: params.identifyId,
+            imageBase64: imageUri, // 这里应该是base64编码的图片
+            identifyId,
             geo: { lat: 0, lng: 0 }, // 实际应用中从相机页面传入
             prefs: { language: 'zh', voiceSpeed: 1.0, autoReturn: true, hapticFeedback: true, subtitles: true },
           };
@@ -158,7 +157,7 @@ export default function LectureScreen() {
         clearTimeout(autoReturnTimer);
       }
     };
-  }, [params]);
+  }, [imageUri, identifyId, guideIdParam, isReplay]);
   
   // 处理返回按钮
   useEffect(() => {
