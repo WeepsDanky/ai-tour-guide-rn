@@ -9,14 +9,14 @@ import { isCameraSupported, getCameraStatusMessage } from '../lib/expo-go-detect
 
 // Conditionally import camera components only if supported
 let Camera: any = null;
-let useCameraDevices: any = null;
+let useCameraDevice: any = null; // FIX: Changed from useCameraDevices
 let useCameraPermission: any = null;
 
 if (isCameraSupported()) {
   try {
     const visionCamera = require('react-native-vision-camera');
     Camera = visionCamera.Camera;
-    useCameraDevices = visionCamera.useCameraDevices;
+    useCameraDevice = visionCamera.useCameraDevice; // FIX: Import the correct hook for v4
     useCameraPermission = visionCamera.useCameraPermission;
   } catch (error) {
     console.warn('react-native-vision-camera not available:', error);
@@ -37,6 +37,7 @@ const IDENTIFY_DELAY = 800; // 预识别延迟
 const IDENTIFY_TIMEOUT = 5000; // 预识别超时
 
 export default function CameraScreen() {
+  console.log('[CameraScreen] Component rendering...');
   const router = useRouter();
   const camera = useRef<any>(null);
   const identifyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -44,11 +45,15 @@ export default function CameraScreen() {
   
   // 权限和设备 - only if camera is supported
   const cameraSupported = isCameraSupported();
-  const cameraHooks = cameraSupported && useCameraPermission ? useCameraPermission() : { hasPermission: false, requestPermission: () => {} };
+  const cameraHooks = cameraSupported && useCameraPermission ? useCameraPermission() : { hasPermission: false, requestPermission: () => Promise.resolve(false) };
   const { hasPermission, requestPermission } = cameraHooks;
-  const devices = cameraSupported && useCameraDevices ? useCameraDevices() : {};
-  const device = devices?.back;
   
+  // FIX: Use the correct hook from Vision Camera v4
+  const device = cameraSupported && useCameraDevice ? useCameraDevice('back') : null;
+
+  console.log(`[CameraScreen] Status - Supported: ${cameraSupported}, Permission: ${hasPermission}`);
+  console.log(`[CameraScreen] Selected device (back): ${device ? `ID: ${device.id}, Name: ${device.name}` : 'None'}`);
+
   // 状态
   const [isActive, setIsActive] = useState(true);
   const [isCapturing, setIsCapturing] = useState(false);
@@ -65,9 +70,12 @@ export default function CameraScreen() {
   // 获取位置权限和当前位置
   useEffect(() => {
     (async () => {
+      console.log('[CameraScreen] Requesting location permission...');
       const { status } = await Location.requestForegroundPermissionsAsync();
+      console.log(`[CameraScreen] Location permission status: ${status}`);
       if (status === 'granted') {
         try {
+          console.log('[CameraScreen] Getting current location...');
           const location = await Location.getCurrentPositionAsync({
             accuracy: Location.Accuracy.Balanced,
           });
@@ -75,8 +83,9 @@ export default function CameraScreen() {
             lat: location.coords.latitude,
             lng: location.coords.longitude,
           });
+          console.log(`[CameraScreen] Location obtained: ${location.coords.latitude}, ${location.coords.longitude}`);
         } catch (error) {
-          console.warn('Failed to get location:', error);
+          console.error('[CameraScreen] Failed to get location:', error);
         }
       }
     })();
@@ -85,6 +94,7 @@ export default function CameraScreen() {
   // 应用状态监听
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextAppState) => {
+      console.log(`[CameraScreen] AppState changed to: ${nextAppState}`);
       if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
         setIsActive(true);
       } else {
@@ -93,35 +103,48 @@ export default function CameraScreen() {
       appState.current = nextAppState;
     });
     
-    return () => subscription?.remove();
+    return () => {
+      console.log('[CameraScreen] Removing AppState listener.');
+      subscription?.remove();
+    };
   }, []);
   
   // 请求相机权限
   useEffect(() => {
+    console.log(`[CameraScreen] Camera permission check: hasPermission = ${hasPermission}`);
     if (!hasPermission) {
-      requestPermission();
+      console.log('[CameraScreen] Requesting camera permission...');
+      requestPermission().then((granted) => {
+        console.log(`[CameraScreen] Camera permission request result: ${granted}`);
+      });
     }
   }, [hasPermission, requestPermission]);
   
   // 预识别逻辑
   const startIdentification = async () => {
     if (!camera.current || !device || !currentLocation || isIdentifying) {
+      console.log('[CameraScreen] Pre-identification skipped (camera/device/location not ready or already identifying).');
       return;
     }
     
+    console.log('[CameraScreen] Starting identification...');
     setIsIdentifying(true);
     setIdentifyResult(null);
     
     try {
       // 拍摄低清快照
+      console.log('[CameraScreen] Taking pre-identification photo...');
       const photo = await camera.current.takePhoto({
         quality: 30, // 低质量用于预识别
         skipMetadata: true,
       });
+      console.log(`[CameraScreen] Pre-identification photo taken: ${photo.path}`);
       
       // 模拟识别API调用
+      console.log('[CameraScreen] Simulating API call for identification...');
       await mockDelay();
       const result = mockIdentifyResponse.result as IdentifyResult;
+      console.log('[CameraScreen] Identification result received:', result);
       
       setIdentifyResult(result);
       
@@ -132,7 +155,7 @@ export default function CameraScreen() {
       }
       
     } catch (error) {
-      console.error('Identification failed:', error);
+      console.error('[CameraScreen] Identification failed:', error);
       setShowAlignmentHint(true);
       setTimeout(() => setShowAlignmentHint(false), 3000);
     } finally {
@@ -163,18 +186,22 @@ export default function CameraScreen() {
   // 拍照处理
   const handleShutter = async () => {
     if (!camera.current || !device || isCapturing) {
+      console.log('[CameraScreen] Shutter press ignored (camera/device not ready or already capturing).');
       return;
     }
     
+    console.log('[CameraScreen] Shutter pressed.');
     setIsCapturing(true);
     cancelIdentification();
     
     try {
       // 拍摄高清照片
+      console.log('[CameraScreen] Taking high-quality photo...');
       const photo = await camera.current.takePhoto({
         quality: 90,
         skipMetadata: false,
       });
+      console.log(`[CameraScreen] High-quality photo taken: ${photo.path}`);
       
       // 准备讲解数据
       const lectureData = {
@@ -195,10 +222,11 @@ export default function CameraScreen() {
       });
       
       // 跳转到讲解页面
+      console.log('[CameraScreen] Navigating to /lecture with data:', lectureData);
       router.push('/lecture');
       
     } catch (error) {
-      console.error('Capture failed:', error);
+      console.error('[CameraScreen] Capture failed:', error);
       Alert.alert('拍照失败', '请重试');
     } finally {
       setIsCapturing(false);
@@ -207,9 +235,10 @@ export default function CameraScreen() {
   
   // 相册导入
   const handleImport = async () => {
+    console.log('[CameraScreen] Handling import from library...');
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.9,
@@ -227,10 +256,13 @@ export default function CameraScreen() {
         });
         
         // 跳转到讲解页面
+        console.log('[CameraScreen] Image imported, navigating to /lecture with URI:', asset.uri);
         router.push('/lecture');
+      } else {
+        console.log('[CameraScreen] Image import cancelled.');
       }
     } catch (error) {
-      console.error('Import failed:', error);
+      console.error('[CameraScreen] Import failed:', error);
       Alert.alert('导入失败', '请重试');
     }
   };
@@ -278,6 +310,7 @@ export default function CameraScreen() {
   
   // Render Expo Go fallback if camera is not supported
   if (!cameraSupported) {
+    console.log('[CameraScreen] Rendering fallback: Camera not supported (likely Expo Go).');
     return (
       <SafeAreaProvider>
         <View style={styles.container}>
@@ -315,6 +348,7 @@ export default function CameraScreen() {
   }
   
   if (!hasPermission) {
+    console.log('[CameraScreen] Rendering fallback: Camera permission not granted.');
     return (
       <SafeAreaProvider>
         <View style={styles.container}>
@@ -328,20 +362,23 @@ export default function CameraScreen() {
     );
   }
   
-  if (!device) {
+  // FIX: Show a loading state while the device is being initialized, instead of an error.
+  if (device == null) {
+    console.log('[CameraScreen] Rendering loading screen: Waiting for camera device...');
     return (
       <SafeAreaProvider>
         <View style={styles.container}>
           <StatusBar style="light" />
           <View style={styles.fallbackContainer}>
-            <Text style={styles.fallbackTitle}>Camera Not Available</Text>
-            <Text style={styles.fallbackMessage}>No camera device found</Text>
+            <Text style={styles.fallbackTitle}>Initializing Camera</Text>
+            <Text style={styles.fallbackMessage}>Searching for a camera device...</Text>
           </View>
         </View>
       </SafeAreaProvider>
     );
   }
   
+  console.log('[CameraScreen] Rendering main camera view.');
   return (
     <SafeAreaProvider>
       <View style={styles.container}>
@@ -356,8 +393,13 @@ export default function CameraScreen() {
             isActive={isActive && !isCapturing}
             photo={true}
             onInitialized={() => {
+              console.log('[CameraScreen] Camera initialized.');
               // 相机初始化后开始预识别
               scheduleIdentification();
+            }}
+            onError={(error) => {
+              console.error('[CameraScreen] Camera runtime error:', error);
+              Alert.alert('Camera Error', error.message);
             }}
           />
         )}
