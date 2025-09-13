@@ -134,8 +134,8 @@ export function AudioPlayer({
       {/* 控制按钮 */}
       <View style={styles.controlsContainer}>
         
-        {/* 播放/暂停 */}
-        <TouchableOpacity
+        {/* 播放/暂停 */} 
+        {/* <TouchableOpacity
           style={[styles.controlButton, styles.playButton]}
           onPress={handlePlayPause}
           disabled={playerState.isLoading}
@@ -145,8 +145,8 @@ export function AudioPlayer({
             size={32} 
             color={tokens.colors.text} 
           />
-        </TouchableOpacity>
-        
+        </TouchableOpacity> */}
+        {/* TODO: Implement play/pause button */}
       </View>
       
       {/* 次要控制 */}
