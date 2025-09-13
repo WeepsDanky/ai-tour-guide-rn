@@ -43,7 +43,12 @@ async def identify(
             candidates = await vision_service.identify_location(request)
         except vision_service.VisionAPIError as e:  # type: ignore[attr-defined]
             logger.warning("Vision identify failed", extra={"error": str(e)})
-            raise HTTPException(status_code=400, detail=f"Vision error: {e}")
+            # Surface error to client
+            return JSONResponse(status_code=400, content={
+                "identifyId": "",
+                "candidates": [],
+                "error": {"type": "vision", "message": str(e)}
+            })
         logger.info("Vision candidates returned", extra={
             "identifyId": identify_id,
             "numCandidates": len(candidates) if candidates else 0,

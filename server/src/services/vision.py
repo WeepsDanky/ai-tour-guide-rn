@@ -19,24 +19,17 @@ class VisionService:
     async def identify_location(self, request: IdentifyRequest) -> List[Candidate]:
         """
         Identify location from image and geographic coordinates
-        
-        Args:
-            request: IdentifyRequest containing image and location data
-            
-        Returns:
-            List of location candidates with confidence scores
         """
+        self.logger.info("vision identify start", extra={
+            "deviceId": request.deviceId,
+            "lat": request.geo.lat,
+            "lng": request.geo.lng,
+        })
         try:
-            self.logger.info("vision identify start", extra={
-                "deviceId": request.deviceId,
-                "lat": request.geo.lat,
-                "lng": request.geo.lng,
-            })
             image_input: Optional[str] = None
             input_is_url: bool = False
-            
+
             if request.imageBase64:
-                # Normalize and validate base64 (support data URLs and missing padding)
                 normalized_b64 = self._normalize_base64(request.imageBase64)
                 try:
                     _ = base64.b64decode(normalized_b64)
@@ -49,28 +42,24 @@ class VisionService:
                 input_is_url = True
             else:
                 raise self.VisionAPIError("Either imageBase64 or imageUrl must be provided")
-            
-            # Prepare the prompt for vision LLM
+
+            if not settings.OPENAI_API_KEY:
+                raise self.VisionAPIError("OPENAI_API_KEY not configured")
+
             prompt = self._create_vision_prompt(request.geo.lat, request.geo.lng)
-            
-            # Call external Vision LLM API
             candidates = await self._call_vision_api(image_input, prompt, input_is_url)
             self.logger.info("vision identify success", extra={
                 "numCandidates": len(candidates) if candidates else 0,
             })
-            
             return candidates
-            
+
+        except VisionService.VisionAPIError:
+            # Propagate known vision errors to be handled at API layer
+            raise
         except Exception as e:
+            # Wrap unexpected errors so API layer can return proper error response
             self.logger.exception(f"vision identify error: {e}")
-            # Return fallback candidate if vision fails
-            return [
-                Candidate(
-                    spot="未知地点",
-                    confidence=0.1,
-                    bbox=None
-                )
-            ]
+            raise self.VisionAPIError(str(e))
     
     def _create_vision_prompt(self, lat: float, lng: float) -> str:
         """Create prompt for vision LLM based on location"""
