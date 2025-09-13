@@ -28,7 +28,10 @@ export function AudioPlayer({
   transcript,
 }: AudioPlayerProps) {
   const [currentSpeedIndex, setCurrentSpeedIndex] = useState(1); // 默认1.0x
-  const [showWaveform, setShowWaveform] = useState(false);
+  const [waveBars, setWaveBars] = useState<number[]>(() =>
+    Array.from({ length: 50 }).map(() => 8 + Math.random() * 16)
+  );
+  const [tick, setTick] = useState(0);
   
   // 格式化时间显示
   const formatTime = (ms: number) => {
@@ -63,6 +66,32 @@ export function AudioPlayer({
   const progressPercentage = playerState.duration > 0 
     ? (playerState.currentPosition / playerState.duration) * 100 
     : 0;
+
+  // 驱动波形动态变化（简易幅度动画，随播放而动）
+  useEffect(() => {
+    let raf: number | null = null;
+    let lastTs = 0;
+    const step = (ts: number) => {
+      const dt = ts - lastTs;
+      if (dt > 50) {
+        lastTs = ts;
+        setWaveBars(prev => {
+          const next = prev.slice(1);
+          const t = (performance.now() / 1000) % 1000;
+          // 基于播放状态生成新高度：播放时抖动更明显，暂停时缓慢衰减
+          const base = playerState.isPlaying ? 14 : 8;
+          const jitter = playerState.isPlaying ? 12 : 4;
+          const sinMod = Math.abs(Math.sin(t * 2.2)) * (playerState.isPlaying ? 10 : 2);
+          next.push(Math.max(4, Math.min(28, base + sinMod + (Math.random() - 0.5) * jitter)));
+          return next;
+        });
+        setTick(v => (v + 1) % 1_000_000);
+      }
+      raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => { if (raf) cancelAnimationFrame(raf); };
+  }, [playerState.isPlaying]);
   
   return (
     <View style={styles.container}>
@@ -73,28 +102,25 @@ export function AudioPlayer({
         </View>
       )}
       
-      {/* 波形显示（可选） */}
-      {showWaveform && (
-        <View style={styles.waveformContainer}>
-          {/* 简化的波形显示 */}
-          <View style={styles.waveform}>
-            {Array.from({ length: 50 }).map((_, index) => (
-              <View
-                key={index}
-                style={[
-                  styles.waveformBar,
-                  {
-                    height: Math.random() * 20 + 4,
-                    backgroundColor: index < (progressPercentage / 2)
-                      ? tokens.colors.accent.architecture
-                      : tokens.colors.text,
-                  },
-                ]}
-              />
-            ))}
-          </View>
+      {/* 波形显示（默认显示，动态变化） */}
+      <View style={styles.waveformContainer}>
+        <View style={styles.waveform}>
+          {waveBars.map((h, index) => (
+            <View
+              key={`${tick}-${index}`}
+              style={[
+                styles.waveformBar,
+                {
+                  height: h,
+                  backgroundColor: index < (progressPercentage / 2)
+                    ? tokens.colors.accent.architecture
+                    : tokens.colors.text,
+                },
+              ]}
+            />
+          ))}
         </View>
-      )}
+      </View>
       
       {/* 控制按钮 */}
       <View style={styles.controlsContainer}>
@@ -116,19 +142,7 @@ export function AudioPlayer({
       
       {/* 次要控制 */}
       <View style={styles.secondaryControls}>
-        
-        {/* 波形切换 */}
-        <TouchableOpacity
-          style={styles.waveformToggle}
-          onPress={() => setShowWaveform(!showWaveform)}
-        >
-          <Ionicons 
-            name={showWaveform ? "bar-chart" : "bar-chart-outline"} 
-            size={20} 
-            color={tokens.colors.text} 
-          />
-        </TouchableOpacity>
-        
+
         {/* 换一种讲法 */}
         <TouchableOpacity
           style={styles.regenerateButton}
