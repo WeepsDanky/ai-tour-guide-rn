@@ -116,15 +116,6 @@ export function AudioPlayer({
       
       {/* 次要控制 */}
       <View style={styles.secondaryControls}>
-        {/* 语速控制 */}
-        <TouchableOpacity
-          style={styles.speedButton}
-          onPress={handleSpeedChange}
-        >
-          <Text style={styles.speedText}>
-            {SPEED_OPTIONS[currentSpeedIndex]}×
-          </Text>
-        </TouchableOpacity>
         
         {/* 波形切换 */}
         <TouchableOpacity
