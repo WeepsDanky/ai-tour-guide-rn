@@ -96,41 +96,8 @@ export function AudioPlayer({
         </View>
       )}
       
-      {/* 进度条 */}
-      <View style={styles.progressContainer}>
-        <View style={styles.progressTrack}>
-          <View 
-            style={[
-              styles.progressFill,
-              { width: `${progressPercentage}%` }
-            ]} 
-          />
-        </View>
-        <View style={styles.timeContainer}>
-          <Text style={styles.timeText}>
-            {formatTime(playerState.currentPosition)}
-          </Text>
-          <Text style={styles.timeText}>
-            {formatTime(playerState.duration)}
-          </Text>
-        </View>
-      </View>
-      
       {/* 控制按钮 */}
       <View style={styles.controlsContainer}>
-        {/* 快退10秒 */}
-        <TouchableOpacity
-          style={styles.controlButton}
-          onPress={() => handleSeek('backward')}
-          disabled={playerState.currentPosition <= 0}
-        >
-          <Ionicons 
-            name="play-back" 
-            size={24} 
-            color={playerState.currentPosition <= 0 ? tokens.colors.text : tokens.colors.text} 
-          />
-          <Text style={styles.seekLabel}>10s</Text>
-        </TouchableOpacity>
         
         {/* 播放/暂停 */}
         <TouchableOpacity
@@ -145,19 +112,6 @@ export function AudioPlayer({
           />
         </TouchableOpacity>
         
-        {/* 快进10秒 */}
-        <TouchableOpacity
-          style={styles.controlButton}
-          onPress={() => handleSeek('forward')}
-          disabled={playerState.currentPosition >= playerState.duration}
-        >
-          <Ionicons 
-            name="play-forward" 
-            size={24} 
-            color={playerState.currentPosition >= playerState.duration ? tokens.colors.text : tokens.colors.text} 
-          />
-          <Text style={styles.seekLabel}>10s</Text>
-        </TouchableOpacity>
       </View>
       
       {/* 次要控制 */}
