@@ -41,8 +41,17 @@ export function AudioPlayer({
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
   
+  // 结束判定（允许少量阈值防止边界误差）
+  const isEnded = playerState.duration > 0 && (playerState.currentPosition >= Math.max(0, playerState.duration - 300));
+
   // 处理播放/暂停
   const handlePlayPause = () => {
+    if (playerState.isLoading) return;
+    if (isEnded) {
+      onSeek(0);
+      onPlayPause();
+      return;
+    }
     onPlayPause();
   };
   
@@ -132,7 +141,7 @@ export function AudioPlayer({
           disabled={playerState.isLoading}
         >
           <Ionicons 
-            name={playerState.isPlaying ? "pause" : "play"} 
+            name={(playerState.isPlaying && !isEnded) ? "pause" : "play"} 
             size={32} 
             color={tokens.colors.text} 
           />
