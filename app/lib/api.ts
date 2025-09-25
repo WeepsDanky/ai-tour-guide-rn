@@ -5,7 +5,7 @@ import { getDeviceId } from './device';
 // API 配置
 const API_CONFIG = {
   BASE_URL: process.env.EXPO_PUBLIC_API_URL || 'https://api.example.com',
-  TIMEOUT: 10000, // 10秒超时
+  TIMEOUT: 35000, // 35秒超时，确保长耗时识别也不超时
   RETRY_COUNT: 3,
   RETRY_DELAY: 1000, // 1秒
 };
@@ -191,7 +191,13 @@ async function withRetry<T>(
       }
       
       // 如果是客户端错误（4xx），不重试
-      if (error instanceof ApiError && error.status && error.status >= 400 && error.status < 500) {
+  if (
+    error instanceof ApiError &&
+    error.status &&
+    error.status >= 400 &&
+    error.status < 500 &&
+    error.status !== 408 // 408（超时）允许重试
+  ) {
         break;
       }
       

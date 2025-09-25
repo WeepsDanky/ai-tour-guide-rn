@@ -49,10 +49,22 @@ async def identify(
                 "candidates": [],
                 "error": {"type": "vision", "message": str(e)}
             })
-        logger.info("Vision candidates returned", extra={
-            "identifyId": identify_id,
-            "numCandidates": len(candidates) if candidates else 0,
-        })
+        try:
+            cand_summary = [
+                {
+                    "spot": c.spot,
+                    "confidence": c.confidence,
+                    "bbox": c.bbox,
+                }
+                for c in (candidates or [])
+            ]
+            logger.info(
+                f"Vision candidates returned identifyId={identify_id} num={len(candidates or [])} data={json.dumps(cand_summary, ensure_ascii=False)}"
+            )
+        except Exception:
+            logger.info(
+                f"Vision candidates returned identifyId={identify_id} num={len(candidates or [])} (unprintable candidates)"
+            )
         
         # Store the identify session in database
         best_candidate = candidates[0] if candidates else None

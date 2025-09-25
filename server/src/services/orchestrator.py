@@ -5,7 +5,7 @@ import base64
 import uuid
 from typing import AsyncGenerator, Dict, Any, List
 from datetime import datetime
-from any_llm import acompletion
+from any_llm import aresponses
 from openai import AsyncOpenAI
 from fastapi import WebSocket
 from ..schemas.guide import (
@@ -102,37 +102,32 @@ class NarrativeOrchestrator:
         return context
     
     async def _stream_and_chunk_llm(self, context: str) -> AsyncGenerator[str, None]:
-        """Stream from LLM via any_llm and chunk into sentences"""
+        """Call any_llm Responses API and chunk full output into sentences"""
         try:
             self.logger.info("LLM stream begin", extra={"guideId": self.guide_id})
-            messages = [
-                {"role": "system", "content": "你是一位专业的导游，为游客提供生动有趣的景点介绍。"},
-                {"role": "user", "content": context},
-            ]
-            buffer = ""
-            stream_iter = await acompletion(
+            # Use Responses API (non-streaming) for simpler, faster integration
+            result = await aresponses(
                 provider=self.llm_provider,
-                model="gpt-4.1-nano",
-                messages=messages,
-                stream=True,
-                max_tokens=2000,
-                temperature=0.7,
+                model="gpt-5-nano",
+                input_data=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "input_text", "text": context},
+                        ],
+                    }
+                ],
+                instructions="你是一位专业的导游，为游客提供生动有趣且精炼的景点介绍。",
+                max_output_tokens=1000,
                 api_key=settings.OPENAI_API_KEY,
             )
-            async for chunk in stream_iter:
-                try:
-                    delta = chunk.choices[0].delta.content or ""
-                except Exception:
-                    delta = ""
-                if delta:
-                    buffer += delta
-                    self.logger.debug("LLM delta", extra={"len": len(delta)})
-                    sentences = self._extract_sentences(buffer)
-                    for sentence in sentences[:-1]:
-                        yield sentence
-                    buffer = sentences[-1] if sentences else ""
-            if buffer.strip():
-                yield buffer
+            full_text = getattr(result, "output_text", None) or ""
+            if not full_text.strip():
+                return
+            sentences = self._extract_sentences(full_text)
+            for sentence in sentences:
+                if sentence and sentence.strip():
+                    yield sentence
         except Exception as e:
             self.logger.exception(f"LLM streaming error: {e}")
             yield "抱歉，导览服务暂时不可用。"

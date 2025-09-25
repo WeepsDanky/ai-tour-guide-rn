@@ -3,7 +3,7 @@ import base64
 import json
 import asyncio
 from typing import List, Optional
-from any_llm import acompletion
+from any_llm import aresponses
 from ..core.config import settings
 from ..schemas.guide import IdentifyRequest, Candidate
 import logging
@@ -99,40 +99,50 @@ class VisionService:
         return s
 
     async def _call_vision_api(self, image_input: str, prompt: str, input_is_url: bool) -> List[Candidate]:
-        """Call external vision API using any_llm (OpenAI provider).
+        """Call external vision API using any_llm Responses API (OpenAI provider).
 
         image_input: base64 (no data: prefix) or https URL when input_is_url=True
         """
         try:
             self.logger.debug("calling vision API with any_llm")
-            response = await acompletion(
-                provider="openai",
-                model="gpt-4.1-nano",
-                messages=[
+            user_content = [
+                {"type": "input_text", "text": prompt},
+            ]
+            # Attach image if present
+            if image_input:
+                user_content.append(
                     {
-                        "role": "user",
-                        "content": [
-                            {"type": "text", "text": prompt},
-                            {
-                                "type": "image_url",
-                                "image_url": {
-                                    "url": image_input if input_is_url else f"data:image/jpeg;base64,{image_input}"
-                                },
-                            },
-                        ],
+                        "type": "input_image",
+                        "image_url": image_input if input_is_url else f"data:image/jpeg;base64,{image_input}"
                     }
-                ],
-                max_tokens=1000,
-                temperature=0.7,
-                response_format={"type": "json_object"},
-                api_key=settings.OPENAI_API_KEY,
+                )
+
+            # Enforce upstream timeout to avoid client-side request timeouts
+            result = await asyncio.wait_for(
+                aresponses(
+                    provider="openai",
+                    model="gpt-5-nano",
+                    input_data=[
+                        {
+                            "role": "user",
+                            "content": user_content,
+                        }
+                    ],
+                    instructions=(
+                        "Return only compact JSON with keys: candidates:[{spot,confidence,bbox?}]."
+                    ),
+                    max_output_tokens=800,
+                    api_key=settings.OPENAI_API_KEY,
+                ),
+                timeout=30,
             )
-            # acompletion returns a normal response for non-streaming mode
-            content = response.choices[0].message.content
+            content = getattr(result, "output_text", "")
+            # Only log the final result
+            self.logger.info(f"vision response result: {content}")
             return self._parse_vision_response({"content": content})
         except asyncio.TimeoutError:
-            self.logger.warning("vision API timeout")
-            raise self.VisionAPIError("Vision service timeout")
+            self.logger.warning("vision API timeout; returning empty candidates to avoid client timeout")
+            return []
         except Exception as e:
             self.logger.exception(f"vision API call error: {e}")
             # Try to surface OpenAI error message if available
