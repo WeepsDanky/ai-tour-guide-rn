@@ -95,7 +95,7 @@ export default function CameraScreen() {
 
       <CameraTopBar 
         onImportPress={actions.handleImport} 
-        onProfilePress={() => Alert.alert('个人设置', '功能开发中...')} 
+        onProfilePress={() => router.push('/profile')} 
       />
 
       <Viewfinder
