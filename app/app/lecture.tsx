@@ -95,7 +95,7 @@ export default function LectureScreen() {
     return (
       <SafeAreaView style={lectureStyles.container}>
         <StatusBar barStyle="light-content" backgroundColor={tokens.colors.background} />
-        <HeaderBar onBack={handleBackPress} confidence={undefined} />
+        <HeaderBar onBack={handleBackPress} />
         <LoadingView title="正在连接..." />
       </SafeAreaView>
     );
@@ -106,7 +106,7 @@ export default function LectureScreen() {
     return (
       <SafeAreaView style={lectureStyles.container}>
         <StatusBar barStyle="light-content" backgroundColor={tokens.colors.background} />
-        <HeaderBar onBack={handleBackPress} confidence={undefined} />
+        <HeaderBar onBack={handleBackPress} />
         <ErrorView message={error} onRetry={() => { if (router.canGoBack()) router.back(); }} />
       </SafeAreaView>
     );
@@ -115,7 +115,7 @@ export default function LectureScreen() {
   return (
     <SafeAreaView style={lectureStyles.container}>
       <StatusBar barStyle="light-content" backgroundColor={tokens.colors.background} />
-      <HeaderBar onBack={handleBackPress} confidence={currentMeta?.confidence} />
+      <HeaderBar onBack={handleBackPress} />
       <ScrollView style={lectureStyles.contentContainer} contentContainerStyle={{ paddingBottom: tokens.spacing.xxl }}>
         {params.imageUri && (
           <Cover imageUri={params.imageUri} title={currentMeta?.title || '未知标题'} />

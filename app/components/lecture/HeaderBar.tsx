@@ -3,14 +3,13 @@ import { View, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { lectureStyles } from '../../styles/lecture.styles';
 import { tokens } from '../../lib/tokens';
-import { ConfidenceBadge } from './ConfidenceBadge';
 
 type HeaderBarProps = {
   onBack: () => void;
-  confidence?: number;
+  confidence?: number; // kept for compatibility; ignored in UI
 };
 
-export function HeaderBar({ onBack, confidence }: HeaderBarProps) {
+export function HeaderBar({ onBack }: HeaderBarProps) {
   return (
     <View style={lectureStyles.header}>
       <TouchableOpacity
@@ -20,9 +19,6 @@ export function HeaderBar({ onBack, confidence }: HeaderBarProps) {
       >
         <Ionicons name="arrow-back" size={24} color={tokens.colors.text} />
       </TouchableOpacity>
-      {typeof confidence === 'number' ? (
-        <ConfidenceBadge confidence={confidence} size="small" showLabel={false} />
-      ) : null}
     </View>
   );
 }
