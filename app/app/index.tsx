@@ -1,6 +1,7 @@
-import { Redirect } from 'expo-router';
+import React from 'react';
+import CameraScreen from './camera';
 
-// 重定向到相机页面作为应用首页
+// 直接展示相机界面作为首页（不进行路由跳转）
 export default function Index() {
-  return <Redirect href="/camera" />;
+  return <CameraScreen />;
 }
