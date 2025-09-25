@@ -4,9 +4,9 @@ let Audio: any = { Sound: { createAsync: async () => ({ sound: { unloadAsync: as
 let usingStub = true;
 try {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const av = require('expo-av');
-  if (av && av.Audio && av.Audio.Sound) {
-    Audio = av.Audio;
+  const audioModule = require('expo-audio');
+  if (audioModule && audioModule.Audio && audioModule.Audio.Sound) {
+    Audio = audioModule.Audio;
     usingStub = false;
   }
 } catch {}

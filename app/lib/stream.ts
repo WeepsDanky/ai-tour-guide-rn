@@ -365,8 +365,8 @@ export class GuideStreamConnection {
     try {
       await ensureAudioMode();
       if (isStubAudio()) {
-        audioLog('expo-av not available, cannot play audio');
-        this.onError?.('Audio engine not available. Please install expo-av and rebuild the app.');
+        audioLog('expo-audio not available, cannot play audio');
+        this.onError?.('Audio engine not available. Please install expo-audio and rebuild the app.');
         return;
       }
       // 卸载当前音频

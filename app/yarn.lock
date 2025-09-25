@@ -3628,11 +3628,6 @@ expo-audio@^0.4.9:
   resolved "https://registry.npmmirror.com/expo-audio/-/expo-audio-0.4.9.tgz#f15f64652785ecd416ad351bf42666315e1e0b69"
   integrity sha512-J4mMYEt2mqRqqwmSsXFylMGlrNWa+MbCzGl1IZBs+smvPAMJ3Ni8fNplzCQ0I9RnRzygKhRwJNpnAVL+n4MuyA==
 
-expo-av@~15.1.7:
-  version "15.1.7"
-  resolved "https://registry.npmmirror.com/expo-av/-/expo-av-15.1.7.tgz#a8422646eca9250c842e8a44fccccb1a4b070a05"
-  integrity sha512-NC+JR+65sxXfQN1mOHp3QBaXTL2J+BzNwVO27XgUEc5s9NaoBTdHWElYXrfxvik6xwytZ+a7abrqfNNgsbQzsA==
-
 expo-constants@~17.1.4, expo-constants@~17.1.7:
   version "17.1.7"
   resolved "https://registry.npmmirror.com/expo-constants/-/expo-constants-17.1.7.tgz#35194c1cef51f1ea756333418f1e077be79a012b"
