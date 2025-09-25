@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { SafeAreaView, StatusBar, Alert, BackHandler, ScrollView } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
@@ -14,13 +14,14 @@ import { AudioPlayer } from '../components/lecture/AudioPlayer';
 import { LectureCards } from '../components/lecture/LectureCards';
 import { ActionArea } from '../components/lecture/ActionArea';
 import { useGuideStream } from '../hooks/useGuideStream';
+import { useHistoryStore } from '../state/history.store';
 
 export default function LectureScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ imageUri?: string; identifyId?: string; guideId?: string; isReplay?: string; geo?: string }>();
 
   // Stream lifecycle managed by hook
-  const { isLoading, error } = useGuideStream({
+  const { isLoading, error, restart } = useGuideStream({
     imageUri: (params.imageUri as string) || undefined,
     identifyId: (params.identifyId as string) || undefined,
     geo: (params.geo as string) || undefined,
@@ -30,6 +31,14 @@ export default function LectureScreen() {
 
   // Select only what's needed from the store
   const { currentMeta, transcript, playbackState, cards, setPlaybackState, reset } = useGuideStore();
+  const { items, toggleFavorite } = useHistoryStore();
+  const [isFavorited, setIsFavorited] = useState(false);
+
+  useEffect(() => {
+    if (!currentMeta) { setIsFavorited(false); return; }
+    const found = items.find(i => i.id === currentMeta.guideId);
+    setIsFavorited(Boolean(found?.isFavorite));
+  }, [items, currentMeta]);
   
   // 处理返回按钮
   useEffect(() => {
@@ -58,31 +67,31 @@ export default function LectureScreen() {
   
   // 处理继续讲解
   const handleContinue = () => {
-    // 这里可以实现继续讲解的逻辑
-    Alert.alert('继续讲解', '此功能正在开发中');
+    // 复用同一张图，提示系统“继续讲解”
+    void restart({ continue: true });
   };
   
   // 处理收藏
   const handleFavorite = async () => {
-    if (currentMeta) {
-      try {
-        // 更新历史记录中的收藏状态
-        await HistoryStorage.toggleFavorite(currentMeta.guideId);
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      } catch (error) {
-        console.error('Failed to toggle favorite:', error);
-      }
+    if (!currentMeta) return;
+    try {
+      await HistoryStorage.toggleFavorite(currentMeta.guideId);
+      toggleFavorite(currentMeta.guideId);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (error) {
+      console.error('Failed to toggle favorite:', error);
     }
   };
   
   // 处理分享
   const handleShare = () => {
-    Alert.alert('分享', '此功能正在开发中');
+    Alert.alert('分享', '请使用下方分享按钮分享这个导览');
   };
   
   // 处理"不是它"
   const handleNotIt = () => {
-    Alert.alert('反馈', '感谢您的反馈，我们会持续改进识别准确性');
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    if (router.canGoBack()) router.back();
   };
   
   // 处理"我来补充"
@@ -126,7 +135,7 @@ export default function LectureScreen() {
           onPlayPause={() => setPlaybackState({ isPlaying: !playbackState.isPlaying })}
           onSeek={() => {}}
           onSpeedChange={() => {}}
-          onRegenerate={() => {}}
+          onRegenerate={() => { void restart({ variant: 'style_alt' }); }}
         />
         {cards && <LectureCards cards={cards} />}
         <ActionArea
@@ -135,8 +144,8 @@ export default function LectureScreen() {
           onShare={handleShare}
           onNotThis={handleNotIt}
           onSupplement={handleSupplement}
-          isLoading={false}
-          isFavorited={false}
+          isLoading={isLoading}
+          isFavorited={isFavorited}
         />
       </ScrollView>
     </SafeAreaView>

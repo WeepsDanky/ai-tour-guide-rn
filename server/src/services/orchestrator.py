@@ -8,6 +8,7 @@ from datetime import datetime
 from any_llm import aresponses
 from openai import AsyncOpenAI
 from fastapi import WebSocket
+from starlette.websockets import WebSocketState
 from ..schemas.guide import (
     InitMessage, MetaMessage, TextMessage, EosMessage, ErrorMessage,
     AudioSegmentInfo
@@ -67,7 +68,11 @@ class NarrativeOrchestrator:
             
         except Exception as e:
             self.logger.exception(f"orchestrator error: {e}")
-            await self._send_error_message("STREAM_ERROR", str(e))
+            try:
+                await self._send_error_message("STREAM_ERROR", str(e))
+            except Exception:
+                # Ignore if client already disconnected
+                pass
     
     async def _send_meta_message(self):
         """Send metadata about the guide"""
@@ -79,7 +84,7 @@ class NarrativeOrchestrator:
             confidence=0.8,
             estimatedDurationMs=120000  # 2 minutes estimate
         )
-        await self.ws.send_json(meta.model_dump())
+        await self._safe_send_json(meta.model_dump())
         self.logger.info("meta sent", extra={"guideId": self.guide_id, "title": meta.title})
     
     async def _get_location_context(self) -> str:
@@ -158,7 +163,7 @@ class NarrativeOrchestrator:
     async def _send_text_delta(self, text: str):
         """Send text delta to client"""
         message = TextMessage(type="text", delta=text)
-        await self.ws.send_json(message.model_dump())
+        await self._safe_send_json(message.model_dump())
         self.logger.debug("text delta sent", extra={"len": len(text)})
         self.transcript_parts.append(text)
     
@@ -182,7 +187,7 @@ class NarrativeOrchestrator:
                 
                 # Send binary audio data
                 header = self._create_binary_header(segment_info)
-                await self.ws.send_bytes(header + audio_bytes)
+                await self._safe_send_bytes(header + audio_bytes)
                 self.logger.info("audio segment sent", extra={
                     "seq": segment_info.seq,
                     "bytes": segment_info.bytes_len,
@@ -266,7 +271,7 @@ class NarrativeOrchestrator:
             totalDurationMs=self.total_duration_ms,
             transcript=transcript
         )
-        await self.ws.send_json(message.model_dump())
+        await self._safe_send_json(message.model_dump())
         self.logger.info("eos sent", extra={
             "guideId": self.guide_id,
             "totalDurationMs": self.total_duration_ms,
@@ -296,5 +301,32 @@ class NarrativeOrchestrator:
             code=code,
             message=message
         )
-        await self.ws.send_json(error.model_dump())
+        await self._safe_send_json(error.model_dump())
         self.logger.error("error message sent", extra={"code": code, "message": message})
+
+    async def _safe_send_json(self, payload: dict) -> None:
+        """Send JSON only if socket is connected; swallow send errors."""
+        try:
+            if getattr(self.ws, "client_state", None) is not None:
+                if self.ws.client_state != WebSocketState.CONNECTED:
+                    return
+        except Exception:
+            # If client_state not available, proceed and rely on exception handling
+            pass
+        try:
+            await self.ws.send_json(payload)
+        except Exception as e:
+            self.logger.debug(f"safe send_json failed: {e}")
+
+    async def _safe_send_bytes(self, data: bytes) -> None:
+        """Send bytes only if socket is connected; swallow send errors."""
+        try:
+            if getattr(self.ws, "client_state", None) is not None:
+                if self.ws.client_state != WebSocketState.CONNECTED:
+                    return
+        except Exception:
+            pass
+        try:
+            await self.ws.send_bytes(data)
+        except Exception as e:
+            self.logger.debug(f"safe send_bytes failed: {e}")
