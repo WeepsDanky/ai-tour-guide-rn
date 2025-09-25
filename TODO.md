@@ -12,4 +12,5 @@
 10. 加速 /identify 接口
 11. /identify 接口有时候随便拍会generate json failed，处理常见情况如随便拍了一个桌面的照片
 12. /identify 接口修改为持续识别，最好能做到 2s 就能识别一次
+-[ ] Build android
 
