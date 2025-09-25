@@ -8,7 +8,7 @@ import { useRouter } from 'expo-router';
 import { isCameraSupported } from '../lib/expo-go-detector';
 import { useGuideStore } from '../state/guide.store';
 import type { GeoLocation, IdentifyResult } from '../types/schema';
-import { IdentifyApi } from '../lib/api';
+import { IdentifyApi, ApiError } from '../lib/api';
 
 // Conditionally resolve camera hooks to remain safe in Expo Go
 let useCameraDeviceReal: any = null;
@@ -157,6 +157,10 @@ export function useCamera(): UseCameraReturn {
       }
     } catch (error) {
       console.error('[useCamera] Identification failed:', error);
+      const message = error instanceof ApiError
+        ? error.message
+        : (error as any)?.message || String(error);
+      Alert.alert('识别失败', message);
       setShowAlignmentHint(true);
       setTimeout(() => setShowAlignmentHint(false), 3000);
     } finally {

@@ -10,7 +10,6 @@
 8. 实现每个按钮的功能：“换一种讲法” 等 /lecture 页面的按钮
 -[x] 移除右上角 80% 的 confidence 的按钮，绿色带对勾的
 10. 加速 /identify 接口
-11. /identify 接口有时候随便拍会generate json failed，处理常见情况如随便拍了一个桌面的照片
+-[ ] /identify 接口有时候随便拍会generate json failed，处理常见情况如随便拍了一个桌面的照片
 12. /identify 接口修改为持续识别，最好能做到 2s 就能识别一次
 -[ ] Build android
-

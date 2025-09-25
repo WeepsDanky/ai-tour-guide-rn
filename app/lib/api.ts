@@ -92,10 +92,32 @@ class ApiClient {
 
       let data;
       try {
+        // 优先按 JSON 解析
         data = await response.json();
       } catch (jsonError) {
-        console.warn('Failed to parse JSON response:', jsonError);
-        throw new ApiError('Invalid JSON response', response.status, 'INVALID_JSON');
+        // 有些情况下后端可能返回文本或空响应体，做更健壮的兜底
+        try {
+          const text = await response.text();
+          const trimmed = (text || '').trim();
+          if (!trimmed) {
+            // 空响应体
+            throw new ApiError('Empty response body', response.status, 'INVALID_JSON');
+          }
+          // 尝试把文本再解析为 JSON（例如 content-type 配置不当）
+          try {
+            data = JSON.parse(trimmed);
+          } catch (parseError) {
+            const snippet = trimmed.length > 200 ? trimmed.slice(0, 200) + '…' : trimmed;
+            console.warn('Non-JSON body received:', snippet);
+            throw new ApiError('Invalid JSON response', response.status, 'INVALID_JSON');
+          }
+        } catch (inner) {
+          if (inner instanceof ApiError) {
+            throw inner;
+          }
+          console.warn('Failed to read/parse text fallback:', inner);
+          throw new ApiError('Invalid JSON response', response.status, 'INVALID_JSON');
+        }
       }
       
       return data as T;
