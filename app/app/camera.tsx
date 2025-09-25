@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, StyleSheet, Alert } from 'react-native';
+import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { isCameraSupported, getCameraStatusMessage } from '../lib/expo-go-detector';
 import { useHistoryStore } from '../state/history.store';
@@ -19,6 +20,7 @@ try {
 } catch {}
 
 export default function CameraScreen() {
+  const router = useRouter();
   const { items: historyItems } = useHistoryStore();
   const { state, actions, refs } = useCamera();
 
@@ -91,7 +93,10 @@ export default function CameraScreen() {
         />
       )}
 
-      <CameraTopBar onImportPress={actions.handleImport} />
+      <CameraTopBar 
+        onImportPress={actions.handleImport} 
+        onProfilePress={() => Alert.alert('个人设置', '功能开发中...')} 
+      />
 
       <Viewfinder
         identifyResult={state.identifyResult || undefined}
@@ -103,31 +108,16 @@ export default function CameraScreen() {
 
       <CameraBottomBar
         onShutterPress={actions.takePhoto}
-        onPreferencesPress={() => Alert.alert('偏好设置', '功能开发中...')}
-        onAlignmentHelpPress={() => {
-          if (state.lightingCondition === 'poor') {
-            Alert.alert('光线提示', '当前光线较暗，建议开启闪光灯或移至光线充足的地方。');
-          } else if (state.lightingCondition === 'backlight') {
-            Alert.alert('光线提示', '检测到逆光，建议调整角度避免强光直射。');
-          } else if (state.showAlignmentHint) {
-            Alert.alert('对齐提示', '请尝试：\n• 靠近目标对象\n• 调整拍摄角度\n• 避免反光和阴影');
-          }
-        }}
+        onImportPress={actions.handleImport}
+        onHistoryPress={() => router.push('/history')}
         isCapturing={state.isCapturing}
         shutterDisabled={!state.device}
-        showAlignmentHint={state.showAlignmentHint}
-        lightingCondition={state.lightingCondition}
       />
 
       <HistoryBar
         recentItems={historyItems.slice(0, 3)}
-        onSwipeUp={() => {
-          // handled in history modal route
-          // keep UI consistent
-        }}
-        onItemPress={(item: any) => {
-          Alert.alert('历史记录', '请从历史页面进入重播');
-        }}
+        onSwipeUp={() => router.push('/history')}
+        onItemPress={(item: any) => router.push('/history')}
       />
     </View>
   );

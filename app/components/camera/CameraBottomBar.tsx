@@ -4,44 +4,24 @@ import { Ionicons } from '@expo/vector-icons';
 import { tokens } from '../../lib/tokens';
 import { ShutterButton } from './ShutterButton';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { HistoryButton } from './HistoryButton';
 
 interface CameraBottomBarProps {
   onShutterPress: () => void;
-  onPreferencesPress: () => void;
-  onAlignmentHelpPress: () => void;
+  onImportPress: () => void;
+  onHistoryPress: () => void;
   isCapturing?: boolean;
   shutterDisabled?: boolean;
-  showAlignmentHint?: boolean;
-  lightingCondition?: 'good' | 'poor' | 'backlight';
 }
 
 export function CameraBottomBar({
   onShutterPress,
-  onPreferencesPress,
-  onAlignmentHelpPress,
+  onImportPress,
+  onHistoryPress,
   isCapturing = false,
   shutterDisabled = false,
-  showAlignmentHint = false,
-  lightingCondition = 'good',
 }: CameraBottomBarProps) {
   const insets = useSafeAreaInsets();
-
-  const getAlignmentIcon = () => {
-    if (lightingCondition === 'poor') return 'flash-outline';
-    if (lightingCondition === 'backlight') return 'sunny-outline';
-    if (showAlignmentHint) return 'move-outline';
-    return 'checkmark-circle-outline';
-  };
-
-  const getAlignmentColor = () => {
-    if (lightingCondition === 'poor' || lightingCondition === 'backlight') {
-      return tokens.colors.semantic.warning;
-    }
-    if (showAlignmentHint) {
-      return tokens.colors.accent.history;
-    }
-    return tokens.colors.semantic.success;
-  };
 
   return (
     <View
@@ -59,25 +39,8 @@ export function CameraBottomBar({
         zIndex: tokens.zIndex.overlay,
       }}
     >
-      {/* 偏好设置按钮 */}
-      <TouchableOpacity
-        onPress={onPreferencesPress}
-        style={{
-          width: tokens.sizing.touchTarget.min,
-        height: tokens.sizing.touchTarget.min,
-          borderRadius: tokens.borderRadius.md,
-          backgroundColor: tokens.colors.overlay.medium,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-        activeOpacity={0.7}
-      >
-        <Ionicons
-          name="person-outline"
-          size={20}
-          color={tokens.colors.text}
-        />
-      </TouchableOpacity>
+      {/* 历史记录按钮（左侧） */}
+      <HistoryButton onPress={onHistoryPress} />
 
       {/* 快门按钮 */}
       <ShutterButton
@@ -86,28 +49,20 @@ export function CameraBottomBar({
         isCapturing={isCapturing}
       />
 
-      {/* 对齐/光线提示按钮 */}
+      {/* 相册导入按钮（右侧） */}
       <TouchableOpacity
-        onPress={onAlignmentHelpPress}
+        onPress={onImportPress}
         style={{
           width: tokens.sizing.touchTarget.min,
-        height: tokens.sizing.touchTarget.min,
+          height: tokens.sizing.touchTarget.min,
           borderRadius: tokens.borderRadius.md,
-          backgroundColor: lightingCondition !== 'good' || showAlignmentHint
-            ? tokens.colors.overlay.heavy
-            : tokens.colors.overlay.medium,
+          backgroundColor: tokens.colors.overlay.medium,
           alignItems: 'center',
           justifyContent: 'center',
-          borderWidth: lightingCondition !== 'good' || showAlignmentHint ? 1 : 0,
-          borderColor: getAlignmentColor(),
         }}
         activeOpacity={0.7}
       >
-        <Ionicons
-          name={getAlignmentIcon()}
-          size={20}
-          color={getAlignmentColor()}
-        />
+        <Ionicons name="images-outline" size={20} color={tokens.colors.text} />
       </TouchableOpacity>
     </View>
   );

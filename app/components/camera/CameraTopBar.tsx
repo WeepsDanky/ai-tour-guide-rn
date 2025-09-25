@@ -6,9 +6,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface CameraTopBarProps {
   onImportPress: () => void;
+  onProfilePress?: () => void;
 }
 
-export function CameraTopBar({ onImportPress }: CameraTopBarProps) {
+export function CameraTopBar({ onImportPress, onProfilePress }: CameraTopBarProps) {
   const insets = useSafeAreaInsets();
 
   return (
@@ -42,16 +43,13 @@ export function CameraTopBar({ onImportPress }: CameraTopBarProps) {
         </Text>
       </View>
 
-      {/* 中间留白 */}
-      <View style={{ flex: 2 }} />
-
-      {/* 相册导入按钮 */}
+      {/* 右上角 Profile */}
       <View style={{ flex: 1, alignItems: 'flex-end' }}>
         <TouchableOpacity
-          onPress={onImportPress}
+          onPress={onProfilePress}
           style={{
             width: tokens.sizing.touchTarget.min,
-        height: tokens.sizing.touchTarget.min,
+            height: tokens.sizing.touchTarget.min,
             borderRadius: tokens.borderRadius.md,
             backgroundColor: tokens.colors.overlay.medium,
             alignItems: 'center',
@@ -59,11 +57,7 @@ export function CameraTopBar({ onImportPress }: CameraTopBarProps) {
           }}
           activeOpacity={0.7}
         >
-          <Ionicons
-            name="images-outline"
-            size={20}
-            color={tokens.colors.text}
-          />
+          <Ionicons name="person-outline" size={20} color={tokens.colors.text} />
         </TouchableOpacity>
       </View>
     </View>
