@@ -118,6 +118,8 @@ class NarrativeOrchestrator:
                     }
                 ],
                 instructions="你是一位专业的导游，为游客提供生动有趣且精炼的景点介绍。",
+                reasoning={"effort": "low"},
+                text={"verbosity": "low"},
                 max_output_tokens=1000,
                 api_key=settings.OPENAI_API_KEY,
             )

@@ -77,6 +77,8 @@ export default function CameraScreen() {
   return (
     <View style={cameraStyles.container}>
       <StatusBar style="light" />
+      {/* Log identify state changes for debugging empty candidates */}
+      {__DEV__ && console.log('[camera] identifyResult:', state.identifyResult, 'isIdentifying:', state.isIdentifying)}
       {CameraComp && (
         <CameraComp
           ref={refs.camera}

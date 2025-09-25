@@ -142,9 +142,16 @@ export function useCamera(): UseCameraReturn {
     try {
       const photo = await camera.current.takePhoto({ quality: 30, skipMetadata: true });
       const base64 = await FileSystem.readAsStringAsync(photo.path, { encoding: FileSystem.EncodingType.Base64 });
-      const dataUrl = `data:image/jpeg;base64,${base64}`;
-      const resp = await IdentifyApi.identify(dataUrl, currentLocation);
-      const best = resp.candidates && resp.candidates.length > 0 ? resp.candidates[0] : null;
+      // Send raw base64 (no data URL prefix). Backend will add the MIME header.
+      const resp = await IdentifyApi.identify(base64, currentLocation);
+      const candidates = resp.candidates || [];
+      if (candidates.length === 0) {
+        setIdentifyResult({ id: resp.identifyId, name: '没有识别到物体', confidence: 0 });
+        setShowAlignmentHint(true);
+        setTimeout(() => setShowAlignmentHint(false), 3000);
+        return;
+      }
+      const best = candidates[0];
       const result: IdentifyResult = {
         id: resp.identifyId,
         name: best ? best.spot : '未知对象',
@@ -157,10 +164,7 @@ export function useCamera(): UseCameraReturn {
       }
     } catch (error) {
       console.error('[useCamera] Identification failed:', error);
-      const message = error instanceof ApiError
-        ? error.message
-        : (error as any)?.message || String(error);
-      Alert.alert('识别失败', message);
+      setIdentifyResult({ id: '', name: '识别失败', confidence: 0 });
       setShowAlignmentHint(true);
       setTimeout(() => setShowAlignmentHint(false), 3000);
     } finally {

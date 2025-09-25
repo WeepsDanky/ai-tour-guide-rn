@@ -20,26 +20,17 @@ class VisionService:
         """
         Identify location from image and geographic coordinates
         """
-        self.logger.info("vision identify start", extra={
-            "deviceId": request.deviceId,
-            "lat": request.geo.lat,
-            "lng": request.geo.lng,
-        })
         try:
             image_input: Optional[str] = None
             input_is_url: bool = False
 
             if request.imageBase64:
-                normalized_b64 = self._normalize_base64(request.imageBase64)
-                try:
-                    _ = base64.b64decode(normalized_b64)
-                except Exception as dec_err:
-                    self.logger.warning("base64 decode warning; proceeding with normalized string", extra={"error": str(dec_err)})
-                image_input = normalized_b64
+                # Accept only base64 from frontend as-is
+                image_input = request.imageBase64
                 input_is_url = False
             elif request.imageUrl:
-                image_input = request.imageUrl.strip()
-                input_is_url = True
+                # Only base64 is accepted to simplify the pipeline
+                raise self.VisionAPIError("Only base64 image is accepted")
             else:
                 raise self.VisionAPIError("Either imageBase64 or imageUrl must be provided")
 
@@ -48,9 +39,6 @@ class VisionService:
 
             prompt = self._create_vision_prompt(request.geo.lat, request.geo.lng)
             candidates = await self._call_vision_api(image_input, prompt, input_is_url)
-            self.logger.info("vision identify success", extra={
-                "numCandidates": len(candidates) if candidates else 0,
-            })
             return candidates
 
         except VisionService.VisionAPIError:
@@ -58,45 +46,17 @@ class VisionService:
             raise
         except Exception as e:
             # Wrap unexpected errors so API layer can return proper error response
-            self.logger.exception(f"vision identify error: {e}")
             raise self.VisionAPIError(str(e))
     
     def _create_vision_prompt(self, lat: float, lng: float) -> str:
-        """Create prompt for vision LLM based on location"""
-        return f"""
-        请分析这张图片，识别其中的地标、建筑物或景点。
-        图片拍摄位置大约在纬度 {lat}，经度 {lng}。
-        
-        请返回JSON格式的结果，包含以下字段：
-        - candidates: 候选地点列表
-        - 每个候选地点包含：
-          - spot: 地点名称
-          - confidence: 置信度 (0-1)
-          - bbox: 边界框坐标 (可选)
-        
-        示例格式：
-        {{
-            "candidates": [
-                {{
-                    "spot": "天安门广场",
-                    "confidence": 0.95,
-                    "bbox": {{"x": 100, "y": 50, "width": 200, "height": 150}}
-                }}
-            ]
-        }}
-        """
+        """Create concise prompt for faster vision LLM response"""
+        return (
+            f"位置: lat {lat}, lng {lng}. "
+            "请识别图像中的地标或景点。"
+            "仅返回JSON: {\"candidates\":[{\"spot\":string,\"confidence\":number,\"bbox\"?:any}]}"
+        )
     
-    def _normalize_base64(self, image_base64: str) -> str:
-        """Accept data URLs and raw base64; strip whitespace; fix padding."""
-        s = (image_base64 or "").strip()
-        if s.startswith("data:"):
-            if "," in s:
-                s = s.split(",", 1)[1]
-        s = s.replace("\n", "").replace("\r", "").replace(" ", "")
-        missing = (-len(s)) % 4
-        if missing:
-            s += "=" * missing
-        return s
+    # Normalization removed: we accept only one base64 type from frontend
 
     async def _call_vision_api(self, image_input: str, prompt: str, input_is_url: bool) -> List[Candidate]:
         """Call external vision API using any_llm Responses API (OpenAI provider).
@@ -104,7 +64,7 @@ class VisionService:
         image_input: base64 (no data: prefix) or https URL when input_is_url=True
         """
         try:
-            self.logger.debug("calling vision API with any_llm")
+            self.logger.info("vision request posted")
             user_content = [
                 {"type": "input_text", "text": prompt},
             ]
@@ -131,6 +91,8 @@ class VisionService:
                     instructions=(
                         "Return only compact JSON with keys: candidates:[{spot,confidence,bbox?}]."
                     ),
+                    reasoning={"effort": "minimal"},
+                    text={"verbosity": "low"},
                     max_output_tokens=800,
                     api_key=settings.OPENAI_API_KEY,
                 ),
@@ -141,10 +103,10 @@ class VisionService:
             self.logger.info(f"vision response result: {content}")
             return self._parse_vision_response({"content": content})
         except asyncio.TimeoutError:
-            self.logger.warning("vision API timeout; returning empty candidates to avoid client timeout")
+            self.logger.error("vision error: timeout")
             return []
         except Exception as e:
-            self.logger.exception(f"vision API call error: {e}")
+            self.logger.error(f"vision error: {e}")
             # Try to surface OpenAI error message if available
             try:
                 msg = str(getattr(e, "message", None) or getattr(e, "error", None) or e)
@@ -179,31 +141,13 @@ class VisionService:
                         bbox=candidate_data.get("bbox")
                     )
                     candidates.append(candidate)
-                
-                return candidates if candidates else self._get_fallback_candidates()
+                return candidates
             else:
-                # If not JSON, try to extract location name from text
-                return [
-                    Candidate(
-                        spot=content[:50] if content else "未知地点",
-                        confidence=0.6,
-                        bbox=None
-                    )
-                ]
+                # Not JSON
+                return []
                 
-        except (json.JSONDecodeError, KeyError, ValueError) as e:
-            self.logger.exception(f"error parsing vision response: {e}")
-            return self._get_fallback_candidates()
-    
-    def _get_fallback_candidates(self) -> List[Candidate]:
-        """Return fallback candidates when vision fails"""
-        return [
-            Candidate(
-                spot="识别失败未知",
-                confidence=0.1,
-                bbox=None
-            )
-        ]
+        except (json.JSONDecodeError, KeyError, ValueError):
+            return []
 
 # Global instance
 vision_service = VisionService()

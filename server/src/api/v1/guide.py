@@ -2,7 +2,7 @@
 import uuid
 import json
 from typing import Dict, Any
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPException
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPException, BackgroundTasks
 from fastapi.responses import JSONResponse
 import logging
 
@@ -20,7 +20,8 @@ logger = logging.getLogger("api.guide")
 @router.post("/identify", response_model=guide_schemas.IdentifyResponse)
 async def identify(
     request: guide_schemas.IdentifyRequest,
-    mapper: GuideMapper = Depends(get_guide_mapper)
+    mapper: GuideMapper = Depends(get_guide_mapper),
+    background_tasks: BackgroundTasks = None,
 ):
     """
     Identify location from image and geographic coordinates
@@ -66,18 +67,29 @@ async def identify(
                 f"Vision candidates returned identifyId={identify_id} num={len(candidates or [])} (unprintable candidates)"
             )
         
-        # Store the identify session in database
+        # Store the identify session in database strictly after responding
         best_candidate = candidates[0] if candidates else None
-        await mapper.create_identify_session(
-            identify_id=identify_id,
-            device_id=request.deviceId,
-            lat=request.geo.lat,
-            lng=request.geo.lng,
-            accuracy_m=request.geo.accuracyM,
-            spot=best_candidate.spot if best_candidate else None,
-            confidence=best_candidate.confidence if best_candidate else None,
-            bbox=best_candidate.bbox if best_candidate else None
-        )
+        async def _persist_identify():
+            try:
+                await mapper.create_identify_session(
+                    identify_id=identify_id,
+                    device_id=request.deviceId,
+                    lat=request.geo.lat,
+                    lng=request.geo.lng,
+                    accuracy_m=request.geo.accuracyM,
+                    spot=best_candidate.spot if best_candidate else None,
+                    confidence=best_candidate.confidence if best_candidate else None,
+                    bbox=best_candidate.bbox if best_candidate else None,
+                )
+                logger.info("identify session created (async)", extra={"identifyId": identify_id})
+            except Exception as e:
+                logger.exception(f"persist identify session failed: {e}")
+        if background_tasks is not None:
+            background_tasks.add_task(_persist_identify)
+        else:
+            # Fallback: still schedule without blocking the response
+            import asyncio as _asyncio
+            _asyncio.create_task(_persist_identify())
         
         response = guide_schemas.IdentifyResponse(
             identifyId=identify_id,

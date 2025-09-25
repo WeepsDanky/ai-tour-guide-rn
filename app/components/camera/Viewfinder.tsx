@@ -40,7 +40,7 @@ export function Viewfinder({ identifyResult, isIdentifying, onFramePress }: View
     }
   }, [isIdentifying, pulseAnim]);
 
-  // 识别结果显示动画
+  // 识别结果显示动画（仅用于高置信度展示）
   useEffect(() => {
     if (identifyResult && identifyResult.confidence >= 0.6) {
       Animated.timing(fadeAnim, {
@@ -49,11 +49,7 @@ export function Viewfinder({ identifyResult, isIdentifying, onFramePress }: View
         useNativeDriver: true,
       }).start();
     } else {
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true,
-      }).start();
+      fadeAnim.setValue(0);
     }
   }, [identifyResult, fadeAnim]);
 
@@ -182,13 +178,12 @@ export function Viewfinder({ identifyResult, isIdentifying, onFramePress }: View
 
       {/* 识别失败提示 */}
       {identifyResult && identifyResult.confidence < 0.6 && (
-        <Animated.View
+        <View
           style={{
             position: 'absolute',
             bottom: -80,
             left: 0,
             right: 0,
-            opacity: fadeAnim,
             backgroundColor: tokens.colors.overlay.heavy,
             paddingHorizontal: tokens.spacing.md,
             paddingVertical: tokens.spacing.sm,
@@ -211,7 +206,7 @@ export function Viewfinder({ identifyResult, isIdentifying, onFramePress }: View
             <Text style={{ fontWeight: '600', color: tokens.colors.text }}>避开反光</Text>
             ，或直接拍我来猜。
           </Text>
-        </Animated.View>
+        </View>
       )}
 
       {/* 识别中提示 */}
