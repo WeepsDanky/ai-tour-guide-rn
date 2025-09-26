@@ -84,7 +84,7 @@ export default function CameraScreen() {
           ref={refs.camera}
           style={StyleSheet.absoluteFill}
           device={state.device}
-          isActive={state.isFocused && state.isActive && !state.isCapturing}
+          isActive={state.isFocused && state.isActive}
           photo={true}
           onInitialized={() => {
             actions.scheduleIdentification();

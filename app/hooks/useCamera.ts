@@ -8,7 +8,7 @@ import { useRouter } from 'expo-router';
 import { isCameraSupported } from '../lib/expo-go-detector';
 import { useGuideStore } from '../state/guide.store';
 import type { GeoLocation, IdentifyResult } from '../types/schema';
-import { IdentifyApi, ApiError } from '../lib/api';
+import { IdentifyApi } from '../lib/api';
 
 // Conditionally resolve camera hooks to remain safe in Expo Go
 let useCameraDeviceReal: any = null;
@@ -16,6 +16,7 @@ let useCameraPermissionReal: any = null;
 
 if (isCameraSupported()) {
   try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const visionCamera = require('react-native-vision-camera');
     useCameraDeviceReal = visionCamera.useCameraDevice; // v4 API
     useCameraPermissionReal = visionCamera.useCameraPermission;
@@ -119,12 +120,7 @@ export function useCamera(): UseCameraReturn {
     return () => subscription?.remove();
   }, []);
 
-  // Focus change cancels identification
-  useEffect(() => {
-    if (!isFocused) {
-      cancelIdentification();
-    }
-  }, [isFocused]);
+  // Focus change cancels identification (placed after cancelIdentification definition)
 
   // Request camera permission
   useEffect(() => {
@@ -134,14 +130,15 @@ export function useCamera(): UseCameraReturn {
   }, [hasPermission, requestPermission]);
 
   const startIdentification = useCallback(async () => {
-    if (!camera.current || !device || !currentLocation || isIdentifying) {
+    if (!camera.current || !device || !currentLocation || isIdentifying || isCapturing || !hasPermission) {
       return;
     }
     setIsIdentifying(true);
     setIdentifyResult(null);
     try {
       const photo = await camera.current.takePhoto({ quality: 30, skipMetadata: true });
-      const base64 = await FileSystem.readAsStringAsync(photo.path, { encoding: FileSystem.EncodingType.Base64 });
+      const fileUri = photo.path.startsWith('file://') ? photo.path : `file://${photo.path}`;
+      const base64 = await FileSystem.readAsStringAsync(fileUri, { encoding: FileSystem.EncodingType.Base64 });
       // Send raw base64 (no data URL prefix). Backend will add the MIME header.
       const resp = await IdentifyApi.identify(base64, currentLocation);
       const candidates = resp.candidates || [];
@@ -170,7 +167,7 @@ export function useCamera(): UseCameraReturn {
     } finally {
       setIsIdentifying(false);
     }
-  }, [camera, device, currentLocation, isIdentifying]);
+  }, [camera, device, currentLocation, isIdentifying, hasPermission, isCapturing]);
 
   const scheduleIdentification = useCallback(() => {
     if (identifyTimer.current) clearTimeout(identifyTimer.current);
@@ -188,12 +185,12 @@ export function useCamera(): UseCameraReturn {
   }, []);
 
   const takePhoto = useCallback(async () => {
-    if (!camera.current || !device || isCapturing) return;
+    if (!camera.current || !device || isCapturing || isIdentifying || !hasPermission) return;
     setIsCapturing(true);
     cancelIdentification();
     try {
       const photo = await camera.current.takePhoto({ quality: 90, skipMetadata: false });
-      const imageUri = photo.path;
+      const imageUri = photo.path.startsWith('file://') ? photo.path : `file://${photo.path}`;
       const geoParam = currentLocation ? encodeURIComponent(JSON.stringify(currentLocation)) : undefined;
       // Optimistically set some meta info; real meta will replace after WS connects
       setMeta({
@@ -206,11 +203,12 @@ export function useCamera(): UseCameraReturn {
       router.push({ pathname: '/lecture', params: { imageUri, identifyId: identifyResult?.id, geo: geoParam } as any });
     } catch (error) {
       console.error('[useCamera] Capture failed:', error);
-      Alert.alert('拍照失败', '请重试');
+      const message = (error as Error)?.message || '请重试';
+      Alert.alert('拍照失败', message);
     } finally {
       setIsCapturing(false);
     }
-  }, [camera, device, isCapturing, cancelIdentification, identifyResult, currentLocation, router, setMeta]);
+  }, [camera, device, isCapturing, isIdentifying, hasPermission, cancelIdentification, identifyResult, currentLocation, router, setMeta]);
 
   const handleImport = useCallback(async () => {
     try {
