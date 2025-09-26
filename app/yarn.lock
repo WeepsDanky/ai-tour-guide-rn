@@ -3639,10 +3639,10 @@ expo-asset@~11.1.7:
     "@expo/image-utils" "^0.7.6"
     expo-constants "~17.1.7"
 
-expo-audio@^1.0.13:
-  version "1.0.13"
-  resolved "https://registry.npmmirror.com/expo-audio/-/expo-audio-1.0.13.tgz#e9e79fece878296560f5d2f5080562232d0629e0"
-  integrity sha512-Z91jMYv/BMpn5Dkyu204RyNl2EpXRx8HgScTYlwRRYewtfTH8NN+bwZQAApn33NwGhW1cIlcuG/XCAeJBr9l4Q==
+expo-audio@~0.4.9:
+  version "0.4.9"
+  resolved "https://registry.npmmirror.com/expo-audio/-/expo-audio-0.4.9.tgz#f15f64652785ecd416ad351bf42666315e1e0b69"
+  integrity sha512-J4mMYEt2mqRqqwmSsXFylMGlrNWa+MbCzGl1IZBs+smvPAMJ3Ni8fNplzCQ0I9RnRzygKhRwJNpnAVL+n4MuyA==
 
 expo-constants@~17.1.4, expo-constants@~17.1.7:
   version "17.1.7"
