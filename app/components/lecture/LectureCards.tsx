@@ -287,7 +287,7 @@ const styles = StyleSheet.create({
   },
   
   emptyContainer: {
-    padding: tokens.spacing.xl,
+    padding: tokens.spacing.sm,
     alignItems: 'center',
   },
   
