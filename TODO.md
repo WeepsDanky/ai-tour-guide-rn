@@ -1,5 +1,6 @@
 # TODO
 
+-[ ] 确保AI可以根据图片和文本准确识别景点，然后给出一个说的过去的回答。
 -[ ] 加速 /identify 接口
 -[ ] 注册和登录功能，刚进入 app 时一个注册屏幕: login with email, apple oauth, continue as guest(在未登录时也可以使用)
 -[ ] 实现每个按钮的功能：“换一种讲法” 等 /lecture 页面的按钮
