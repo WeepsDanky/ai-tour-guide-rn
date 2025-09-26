@@ -99,9 +99,9 @@ class NarrativeOrchestrator:
         # Simulate context retrieval
         context = f"""
         Location: 纬度 {lat}, 经度 {lng}
-        这是一个需要介绍的地点。请为游客提供有趣且信息丰富的导览解说。
+        这是一个需要介绍的地点。请主要根据图片内容（先描述图片内容），地理坐标为辅。为游客提供有趣且信息丰富的导览解说。
         包括历史背景、文化意义、建筑特色等内容。
-        语言风格要生动有趣，适合导游解说。
+        语言风格地道一些，像一个长久住在附近的东北人给你讲解。
         """
         
         return context
@@ -113,7 +113,7 @@ class NarrativeOrchestrator:
             # Use Responses API (non-streaming) for simpler, faster integration
             result = await aresponses(
                 provider=self.llm_provider,
-                model="gpt-5-nano",
+                model="gpt-5",
                 input_data=[
                     {
                         "role": "user",
@@ -122,10 +122,10 @@ class NarrativeOrchestrator:
                         ],
                     }
                 ],
-                instructions="你是一位专业的导游，为游客提供生动有趣且精炼的景点介绍。",
+                instructions="你是一位本地人，为朋友提供有意思且简单的景点介绍。",
                 reasoning={"effort": "low"},
                 text={"verbosity": "low"},
-                max_output_tokens=1000,
+                max_output_tokens=500,
                 api_key=settings.OPENAI_API_KEY,
             )
             full_text = getattr(result, "output_text", None) or ""
