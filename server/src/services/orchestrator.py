@@ -3,7 +3,7 @@ import asyncio
 import json
 import base64
 import uuid
-from typing import AsyncGenerator, Dict, Any, List
+from typing import AsyncGenerator, Dict, Any, List, Optional
 from datetime import datetime
 from any_llm import aresponses
 from openai import AsyncOpenAI
@@ -50,7 +50,7 @@ class NarrativeOrchestrator:
             context = await self._get_location_context()
             
             # 3. Stream narrative from LLM and process in parallel
-            async for sentence in self._stream_and_chunk_llm(context):
+            async for sentence in self._stream_and_chunk_llm(context, self.init_data.imageBase64):
                 if sentence.strip():
                     # 4a. Send text delta immediately
                     await self._send_text_delta(sentence)
@@ -98,18 +98,31 @@ class NarrativeOrchestrator:
         
         # Simulate context retrieval
         context = f"""
-        Location: 纬度 {lat}, 经度 {lng}
-        这是一个需要介绍的地点。请主要根据图片内容（先描述图片内容），地理坐标为辅。为游客提供有趣且信息丰富的导览解说
-        包括历史背景、文化意义、建筑特色等内容。
-        语言风格地道一些，像一个长久住在附近的东北人给你讲解。
+        Location: 纬度 {lat}, 经度 {lng}.
+        这是一张用户拍摄的现场照片。请仔细观察图片内容，并结合地理坐标，为游客提供一段有趣且信息丰富的导览解说。
+        你的解说应该首先描述图片中的景象，然后可以介绍相关的历史背景、文化意义、建筑特色等。
+        请使用地道、亲切的语言风格，就像一个住在附近的本地人，热情地为朋友介绍这个地方。
         """
         
         return context
     
-    async def _stream_and_chunk_llm(self, context: str) -> AsyncGenerator[str, None]:
-        """Call any_llm Responses API and chunk full output into sentences"""
+    async def _stream_and_chunk_llm(self, context: str, image_data_url: Optional[str]) -> AsyncGenerator[str, None]:
+        """Call any_llm Responses API with multimodal input and chunk output into sentences"""
         try:
-            self.logger.info("LLM stream begin", extra={"guideId": self.guide_id})
+            self.logger.info("LLM stream begin", extra={"guideId": self.guide_id, "hasImage": bool(image_data_url)})
+
+            # Prepare the content list for the LLM
+            user_content: List[Dict[str, Any]] = [{"type": "input_text", "text": context}]
+            if image_data_url:
+                # Based on the OpenAI documentation for vision, the content list should
+                # contain separate dictionaries for text and image.
+                user_content.append(
+                    {
+                        "type": "input_image",
+                        "image_url": image_data_url
+                    }
+                )
+
             # Use Responses API (non-streaming) for simpler, faster integration
             result = await aresponses(
                 provider=self.llm_provider,
@@ -117,9 +130,7 @@ class NarrativeOrchestrator:
                 input_data=[
                     {
                         "role": "user",
-                        "content": [
-                            {"type": "input_text", "text": context},
-                        ],
+                        "content": user_content,
                     }
                 ],
                 instructions="你是一位本地人，为朋友提供有意思且简单的景点介绍。",
