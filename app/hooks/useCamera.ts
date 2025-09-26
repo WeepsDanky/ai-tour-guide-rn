@@ -185,8 +185,10 @@ export function useCamera(): UseCameraReturn {
   }, []);
 
   const takePhoto = useCallback(async () => {
-    if (!camera.current || !device || isCapturing || isIdentifying || !hasPermission) return;
+    // Allow interrupting identification: do NOT block when isIdentifying is true
+    if (!camera.current || !device || isCapturing || !hasPermission) return;
     setIsCapturing(true);
+    // Cancel any scheduled or in-progress identification UI state
     cancelIdentification();
     try {
       const photo = await camera.current.takePhoto({ quality: 90, skipMetadata: false });
@@ -208,7 +210,7 @@ export function useCamera(): UseCameraReturn {
     } finally {
       setIsCapturing(false);
     }
-  }, [camera, device, isCapturing, isIdentifying, hasPermission, cancelIdentification, identifyResult, currentLocation, router, setMeta]);
+  }, [camera, device, isCapturing, hasPermission, cancelIdentification, identifyResult, currentLocation, router, setMeta]);
 
   const handleImport = useCallback(async () => {
     try {
