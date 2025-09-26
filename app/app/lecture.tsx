@@ -32,12 +32,9 @@ export default function LectureScreen() {
   // Select only what's needed from the store
   const { currentMeta, transcript, playbackState, cards, setPlaybackState, reset } = useGuideStore();
   const { items, toggleFavorite } = useHistoryStore();
-  const [isFavorited, setIsFavorited] = useState(false);
 
   useEffect(() => {
-    if (!currentMeta) { setIsFavorited(false); return; }
-    const found = items.find(i => i.id === currentMeta.guideId);
-    setIsFavorited(Boolean(found?.isFavorite));
+    // 保留对 items/currentMeta 的监听，若后续需要可扩展
   }, [items, currentMeta]);
   
   // 处理返回按钮
@@ -71,17 +68,7 @@ export default function LectureScreen() {
     void restart({ continue: true });
   };
   
-  // 处理收藏
-  const handleFavorite = async () => {
-    if (!currentMeta) return;
-    try {
-      await HistoryStorage.toggleFavorite(currentMeta.guideId);
-      toggleFavorite(currentMeta.guideId);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } catch (error) {
-      console.error('Failed to toggle favorite:', error);
-    }
-  };
+  // 已移除收藏按钮
   
   // 处理分享
   const handleShare = () => {
@@ -94,10 +81,7 @@ export default function LectureScreen() {
     if (router.canGoBack()) router.back();
   };
   
-  // 处理"我来补充"
-  const handleSupplement = () => {
-    Alert.alert('补充内容', '此功能正在开发中');
-  };
+  // 已移除“我来补充”按钮
   
   // 渲染加载状态
   if (isLoading) {
@@ -140,12 +124,9 @@ export default function LectureScreen() {
         {cards && <LectureCards cards={cards} />}
         <ActionArea
           onContinue={handleContinue}
-          onFavorite={handleFavorite}
           onShare={handleShare}
           onNotThis={handleNotIt}
-          onSupplement={handleSupplement}
           isLoading={isLoading}
-          isFavorited={isFavorited}
         />
       </ScrollView>
     </SafeAreaView>

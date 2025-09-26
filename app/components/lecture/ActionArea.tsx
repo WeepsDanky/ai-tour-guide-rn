@@ -6,21 +6,15 @@ import { tokens } from '../../lib/tokens';
 
 interface ActionAreaProps {
   onContinue: () => void;
-  onFavorite: () => void;
   onShare: () => void;
   onNotThis: () => void;
-  onSupplement: () => void;
-  isFavorited: boolean;
   isLoading?: boolean;
 }
 
 export function ActionArea({
   onContinue,
-  onFavorite,
   onShare,
   onNotThis,
-  onSupplement,
-  isFavorited,
   isLoading = false,
 }: ActionAreaProps) {
   
@@ -28,12 +22,6 @@ export function ActionArea({
   const handleContinue = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     onContinue();
-  };
-  
-  // 处理收藏
-  const handleFavorite = async () => {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    onFavorite();
   };
   
   // 处理分享
@@ -68,15 +56,6 @@ export function ActionArea({
     );
   };
   
-  // 处理补充信息
-  const handleSupplement = () => {
-    Alert.alert(
-      '补充信息',
-      '感谢您想要贡献更多信息！此功能正在开发中。',
-      [{ text: '好的' }]
-    );
-  };
-  
   return (
     <View style={styles.container}>
       {/* 主要操作 */}
@@ -107,31 +86,9 @@ export function ActionArea({
         </TouchableOpacity>
       </View>
       
-      {/* 次要操作 */}
+      {/* 次要操作：仅保留 分享 与 不是它 */}
       <View style={styles.secondarySection}>
         <View style={styles.secondaryRow}>
-          {/* 收藏 */}
-          <TouchableOpacity
-            style={[
-              styles.secondaryButton,
-              isFavorited && styles.favoriteButton
-            ]}
-            onPress={handleFavorite}
-            activeOpacity={0.7}
-          >
-            <Ionicons 
-              name={isFavorited ? "heart" : "heart-outline"} 
-              size={20} 
-              color={isFavorited ? tokens.colors.semantic.error : tokens.colors.text} 
-            />
-            <Text style={[
-              styles.secondaryButtonText,
-              isFavorited && styles.favoriteButtonText
-            ]}>
-              {isFavorited ? '已收藏' : '收藏'}
-            </Text>
-          </TouchableOpacity>
-          
           {/* 分享 */}
           <TouchableOpacity
             style={styles.secondaryButton}
@@ -145,9 +102,7 @@ export function ActionArea({
             />
             <Text style={styles.secondaryButtonText}>分享</Text>
           </TouchableOpacity>
-        </View>
-        
-        <View style={styles.secondaryRow}>
+          
           {/* 不是它 */}
           <TouchableOpacity
             style={styles.secondaryButton}
@@ -165,20 +120,6 @@ export function ActionArea({
             ]}>
               不是它
             </Text>
-          </TouchableOpacity>
-          
-          {/* 我来补充 */}
-          <TouchableOpacity
-            style={styles.secondaryButton}
-            onPress={handleSupplement}
-            activeOpacity={0.7}
-          >
-            <Ionicons 
-              name="add-circle-outline" 
-              size={20} 
-              color={tokens.colors.text} 
-            />
-            <Text style={styles.secondaryButtonText}>我来补充</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -264,20 +205,11 @@ const styles = StyleSheet.create({
     flex: 0.48,
   },
   
-  favoriteButton: {
-    backgroundColor: tokens.colors.semantic.error + '20',
-    borderColor: tokens.colors.semantic.error,
-  },
-  
   secondaryButtonText: {
     fontSize: tokens.typography.fontSize.body,
     color: tokens.colors.text,
     fontFamily: tokens.typography.fontFamily.chinese,
     marginLeft: tokens.spacing.xs,
-  },
-  
-  favoriteButtonText: {
-    color: tokens.colors.semantic.error,
   },
   
   hintSection: {
