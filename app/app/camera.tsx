@@ -115,12 +115,6 @@ export default function CameraScreen() {
         isCapturing={state.isCapturing}
         shutterDisabled={!state.device}
       />
-
-      <HistoryBar
-        recentItems={historyItems.slice(0, 3)}
-        onSwipeUp={() => router.push('/history')}
-        onItemPress={(item: any) => router.push('/history')}
-      />
     </View>
   );
 }
