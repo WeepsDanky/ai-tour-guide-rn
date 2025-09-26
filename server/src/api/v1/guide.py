@@ -202,6 +202,16 @@ async def guide_stream(websocket: WebSocket):
                 except Exception as e:
                     ws_logger.exception(f"WS[{conn_id}] close handling error: {e}")
                     break
+            
+            elif message_type == "ping":
+                # Lightweight keep-alive handler
+                try:
+                    _ = guide_schemas.PingMessage(**message_data)
+                except Exception:
+                    pass  # be lenient on ping shape
+                pong = {"type": "pong", "ts": int(__import__("time").time() * 1000)}
+                ws_logger.debug(f"WS[{conn_id}] send -> pong")
+                await websocket.send_json(pong)
                     
             else:
                 ws_logger.warning(f"WS[{conn_id}] unknown message type: {message_type}")

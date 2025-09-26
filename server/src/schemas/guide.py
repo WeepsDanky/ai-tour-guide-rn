@@ -65,8 +65,13 @@ class CloseMessage(BaseModel):
     """Close the streaming session"""
     type: Literal["close"]
 
+# Keep-alive ping from client
+class PingMessage(BaseModel):
+    type: Literal["ping"]
+    ts: Optional[int] = Field(None, description="Client timestamp (ms)")
+
 # Union type for all client messages
-ClientMessage = Union[InitMessage, ReplayMessage, NackMessage, CloseMessage]
+ClientMessage = Union[InitMessage, ReplayMessage, NackMessage, CloseMessage, PingMessage]
 
 # 1.3 WebSocket Messages - Server to Client
 class MetaMessage(BaseModel):
@@ -97,8 +102,13 @@ class ErrorMessage(BaseModel):
     message: str = Field(..., description="Error message")
     details: Optional[Dict[str, Any]] = Field(None, description="Additional error details")
 
+# Server pong response
+class PongMessage(BaseModel):
+    type: Literal["pong"]
+    ts: int = Field(..., description="Server timestamp (ms)")
+
 # Union type for all server messages
-ServerMessage = Union[MetaMessage, TextMessage, EosMessage, ErrorMessage]
+ServerMessage = Union[MetaMessage, TextMessage, EosMessage, ErrorMessage, PongMessage]
 
 # 1.4 Additional helper schemas
 class UserPreferences(BaseModel):

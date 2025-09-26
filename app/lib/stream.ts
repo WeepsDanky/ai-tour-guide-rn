@@ -193,6 +193,9 @@ export class GuideStreamConnection {
           wsLog('recv eos', { guideId: message.guideId });
           if (message.guideId) this.onComplete?.(message.guideId);
           break;
+        case 'pong':
+          wsLog('recv pong', { ts: message.ts });
+          break;
         case 'err': case 'error':
           wsLog('recv error', message);
           this.onError?.(message.msg || message.message || 'Server error');
@@ -388,7 +391,7 @@ export class GuideStreamConnection {
     
     for (const filePath of this.playerState.queue) {
       try { await FileSystem.deleteAsync(filePath, { idempotent: true }); } 
-      catch (error) { console.warn('Failed to delete audio file:', filePath); }
+      catch (error) { console.warn('Failed to delete audio file:', filePath, error); }
     }
     
     this.playerState.queue = [];
