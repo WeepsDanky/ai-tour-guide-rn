@@ -15,6 +15,9 @@
     },
     "preview": {
       "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://ai-tour-guide-rn.onrender.com/api/v1",
         "EXPO_PUBLIC_WS_URL": "wss://ai-tour-guide-rn.onrender.com/api/v1/guide/stream",
