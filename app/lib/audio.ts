@@ -1,4 +1,5 @@
 // Lightweight audio utilities for playback and logging
+import { Platform, PermissionsAndroid } from 'react-native';
 
 let Audio: any = { Sound: { createAsync: async () => ({ sound: { unloadAsync: async () => {}, setOnPlaybackStatusUpdate: (_: any) => {} } }) } };
 let usingStub = true;
@@ -38,6 +39,32 @@ export async function ensureAudioMode(): Promise<void> {
     audioLog('audio mode configure error', e);
   } finally {
     audioModeConfigured = true;
+  }
+}
+
+/**
+ * Ensure microphone permission is granted on Android (and iOS if required).
+ * On Expo SDK 53 with expo-audio, Audio.requestPermissionsAsync exists for mic.
+ */
+export async function ensureMicrophonePermission(): Promise<boolean> {
+  try {
+    if (Audio && typeof Audio.requestPermissionsAsync === 'function') {
+      const result = await Audio.requestPermissionsAsync();
+      // Expo-style response: { status: 'granted' | 'denied' | 'undetermined', granted?: boolean }
+      const granted = (result && (result.granted === true || result.status === 'granted')) as boolean;
+      if (!granted) audioLog('microphone permission not granted via Audio API');
+      return granted;
+    }
+    if (Platform.OS === 'android') {
+      const res = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.RECORD_AUDIO);
+      const ok = res === PermissionsAndroid.RESULTS.GRANTED;
+      if (!ok) audioLog('microphone permission denied via PermissionsAndroid');
+      return ok;
+    }
+    return true;
+  } catch (e) {
+    audioLog('microphone permission error', e);
+    return false;
   }
 }
 

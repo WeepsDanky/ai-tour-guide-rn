@@ -6,7 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { tokens } from '../lib/tokens';
-import { ensureAudioMode, audioLog } from '../lib/audio';
+import { ensureAudioMode, ensureMicrophonePermission, audioLog } from '../lib/audio';
 
 // 防止启动画面自动隐藏
 SplashScreen.preventAutoHideAsync();
@@ -21,8 +21,14 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
-    // configure audio mode at app start
-    ensureAudioMode().catch((e) => audioLog('ensureAudioMode error', e));
+    // Request mic permission first, then configure audio
+    (async () => {
+      const micOk = await ensureMicrophonePermission();
+      if (!micOk) {
+        audioLog('microphone permission not granted at startup');
+      }
+      await ensureAudioMode();
+    })().catch((e) => audioLog('startup audio init error', e));
   }, []);
 
   useEffect(() => {
