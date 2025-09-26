@@ -193,7 +193,7 @@ export class WebSocketClient {
 
   private startPing() {
     this.pingTimer = setInterval(() => {
-      if (this.state === 'connected') { this.send({ type: 'ping' } as any); }
+      if (this.state === 'connected') { wsLog('send ping'); this.send({ type: 'ping' } as any); }
     }, this.options.pingIntervalMs);
   }
 

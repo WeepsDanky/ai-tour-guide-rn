@@ -20,6 +20,7 @@ export class AudioStreamPlayer {
   private player: AudioPlayer | null = null;
   private destroyed = false;
   private handlers: AudioStreamPlayerHandlers = {};
+  private advancing = false;
 
   setHandlers(h: AudioStreamPlayerHandlers) { this.handlers = h; }
 
@@ -67,7 +68,7 @@ export class AudioStreamPlayer {
     if (!this.player) {
       try {
         log('Creating AudioPlayer instance...');
-        const initialSource = this.queue.shift();
+        const initialSource = this.queue[0];
         if (!initialSource) {
           this.isPlaying = false;
           this.handlers.onEnd?.();
@@ -75,6 +76,8 @@ export class AudioStreamPlayer {
         }
         this.player = createAudioPlayer({ uri: initialSource });
         this.player.play();
+        // Dequeue only after play has been initiated
+        this.queue.shift();
         this.player.addListener('playbackStatusUpdate', (status) => {
           if ((status as any).didJustFinish) {
             log('Playback finished, playing next...');
@@ -85,24 +88,35 @@ export class AudioStreamPlayer {
         console.error('[AUDIO] Failed to start audio player:', e);
         this.handlers.onError?.('Audio engine failed to start.');
         this.isPlaying = false;
+        // Keep the current head of queue for retry on next enqueue
       }
-    } else {
-      this.playNext();
     }
   }
 
   private playNext() {
-    if (this.destroyed || !this.player) return;
-    const nextPath = this.queue.shift();
+    if (this.destroyed || !this.player || this.advancing) return;
+    this.advancing = true;
+    const nextPath = this.queue[0];
     if (!nextPath) {
       log('Queue empty, playback finished.');
       this.isPlaying = false;
       this.handlers.onEnd?.();
+      this.advancing = false;
       return;
     }
     log('Replacing player source with:', nextPath);
-    this.player.replace({ uri: nextPath });
-    this.player.play();
+    try {
+      this.player.replace({ uri: nextPath });
+      this.player.play();
+      // Dequeue only after replace+play succeed
+      this.queue.shift();
+    } catch (e: any) {
+      console.error('[AUDIO] Failed to replace/play next source:', e);
+      this.handlers.onError?.('Audio engine failed to play next segment.');
+      // Do not shift; keep for retry on next status tick/enqueue
+    } finally {
+      this.advancing = false;
+    }
   }
 
   async destroy() {
