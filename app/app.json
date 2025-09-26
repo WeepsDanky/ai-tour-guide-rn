@@ -20,6 +20,7 @@
       "expo-web-browser",
       "expo-font",
       "expo-location",
+      "expo-audio",
       [
         "react-native-vision-camera",
         {
